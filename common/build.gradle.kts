@@ -1,5 +1,5 @@
 plugins {
-    id("java")
+    application
     kotlin("jvm") version "1.9.0"
 }
 
@@ -12,4 +12,8 @@ repositories {
 
 dependencies {
     implementation(kotlin("reflect"))
+}
+
+application {
+    mainClass.set("me.santio.coffee.common.Coffee")
 }

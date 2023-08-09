@@ -1,6 +1,8 @@
 plugins {
     id("java")
     kotlin("jvm") version "1.9.0"
+    id("com.github.johnrengelman.shadow") version "7.0.0"
+    `maven-publish`
 }
 
 group = "me.santio.coffee.bukkit"
