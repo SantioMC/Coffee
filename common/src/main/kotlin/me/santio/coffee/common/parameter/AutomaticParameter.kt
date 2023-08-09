@@ -13,6 +13,6 @@ abstract class AutomaticParameter {
      * @return An instance of the type that the command uses. Make sure that the return type
      *       matches the type that the parameter is passed in.
      */
-    abstract fun handle(type: Class<*>): Any
+    abstract fun handle(type: Class<*>, input: String): Any
 
 }

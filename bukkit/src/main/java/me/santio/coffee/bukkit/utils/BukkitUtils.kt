@@ -1,12 +1,12 @@
 package me.santio.coffee.bukkit.utils
 
+import me.santio.coffee.bukkit.SenderAutomaticParameter
 import me.santio.coffee.bukkit.builders.CommandBuilder
 import me.santio.coffee.common.Coffee
 import me.santio.coffee.common.exception.CommandErrorException
 import me.santio.coffee.common.models.Path
 import me.santio.coffee.common.models.SubCommand
 import org.bukkit.command.*
-import java.lang.Exception
 
 internal object BukkitUtils {
 
@@ -65,7 +65,15 @@ internal object BukkitUtils {
             label: String,
             args: Array<out String>
         ): Boolean {
-            val path = Path.from(label + " " + args.joinToString(" "))
+            val builder = StringBuilder(label).append(" ")
+
+            if (sender is ConsoleCommandSender) builder.append(SenderAutomaticParameter.INTERNAL_CONSOLE)
+            else builder.append(sender.name)
+
+            builder.append(" ")
+            builder.append(args.joinToString(" "))
+
+            val path = Path.from(builder.toString())
 
             try {
                 Coffee.execute(path)

@@ -15,6 +15,9 @@ data class SubCommand(
 
     fun execute(arguments: List<String>) {
         CommandParser.runAsync {
+            @Suppress("NAME_SHADOWING")
+            val arguments = arguments.toMutableList()
+
             val defaults = CommandParser.getAutomaticParameters()
             val types = parameters.take(defaults.size).map { it.type }
             val parameters = parameters.drop(defaults.size)
@@ -26,7 +29,8 @@ data class SubCommand(
                 val type = types.firstOrNull { default.types.contains(it) }
                     ?: throw CommandErrorException("Invalid default parameter type: ${default.javaClass.name}")
 
-                pass.add(default.handle(type))
+                val input = arguments.removeFirstOrNull() ?: throw CommandErrorException("Failed to find value to supply automatic parameter, the implementation is likely broken")
+                pass.add(default.handle(type, input))
             }
 
             // Ensure all arguments are provided
