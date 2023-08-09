@@ -19,3 +19,13 @@ dependencies {
     compileOnly(kotlin("stdlib-jdk8"))
     compileOnly("org.spigotmc:spigot-api:1.13-R0.1-SNAPSHOT")
 }
+
+tasks {
+    build {
+        dependsOn("shadowJar")
+    }
+
+    shadowJar {
+        archiveClassifier.set("")
+    }
+}
