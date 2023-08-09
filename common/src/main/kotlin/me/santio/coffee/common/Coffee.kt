@@ -61,6 +61,7 @@ object Coffee {
      * @see CoffeeBundle
      */
     @JvmStatic
+    @JvmName("bundle")
     fun <B: CoffeeBundle> import(bundle: B): Coffee {
         CommandParser.registerAutomaticParameter(*bundle.automaticParameters.toTypedArray())
         CommandParser.registerAdapter(*bundle.adapters.toTypedArray())
