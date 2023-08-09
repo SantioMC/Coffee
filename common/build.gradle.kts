@@ -11,7 +11,8 @@ repositories {
 }
 
 dependencies {
-    implementation(kotlin("reflect"))
+    compileOnly(kotlin("reflect"))
+    compileOnly(kotlin("stdlib-jdk8"))
 }
 
 application {
