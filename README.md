@@ -84,7 +84,11 @@ Coffee has two ways of doing this:
 
 ```kotlin
 
-Coffee.brew(PrintCommand::class) // Register one or more classes
+// Load the implementation
+Coffee.bundle(CoffeeBukkit(pluginInstance))
+
+// Register commands
+Coffee.brew(PrintCommand::class.java) // Register one or more classes
 Coffee.brew("com.example.commands") // Register all classes in a package
 
 ```
@@ -199,9 +203,9 @@ object EchoCommand {
     
     fun main( // Command: /echo [message]
         @Sender sender: CommandSender,
-        message: String?
+        vararg message: String
     ) {
-        sender.sendMessage(message)
+        sender.sendMessage(message.joinToString(" "))
     }
     
 }
