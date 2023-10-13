@@ -240,7 +240,7 @@ object CommandParser {
             val infinite = parameter.second?.isVararg ?: parameter.first.isVarArgs
 
             val individual = parameter.first.type.componentType ?: parameter.first.type
-            arguments.add(CommandParameter(placement, name, individual, optional, infinite))
+            arguments.add(CommandParameter(placement, name, individual, optional, infinite, parameter.first))
         }
 
         return SubCommand(

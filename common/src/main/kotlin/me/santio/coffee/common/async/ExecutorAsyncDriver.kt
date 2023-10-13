@@ -7,7 +7,7 @@ import java.util.concurrent.Executors
  * @see Executors
  * @see AsyncDriver
  */
-internal object ExecutorAsyncDriver: AsyncDriver() {
+object ExecutorAsyncDriver: AsyncDriver() {
     override fun runAsync(runnable: Runnable) {
         Executors.newSingleThreadExecutor().submit(runnable)
     }
