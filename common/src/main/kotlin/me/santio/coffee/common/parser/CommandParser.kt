@@ -1,7 +1,10 @@
 package me.santio.coffee.common.parser
 
 import me.santio.coffee.common.adapter.ArgumentAdapter
-import me.santio.coffee.common.adapter.impl.*
+import me.santio.coffee.common.adapter.impl.DoubleAdapter
+import me.santio.coffee.common.adapter.impl.FloatAdapter
+import me.santio.coffee.common.adapter.impl.IntegerAdapter
+import me.santio.coffee.common.adapter.impl.StringAdapter
 import me.santio.coffee.common.annotations.Command
 import me.santio.coffee.common.annotations.ParserIgnore
 import me.santio.coffee.common.annotations.Sync
@@ -12,7 +15,6 @@ import me.santio.coffee.common.exception.NoAdapterException
 import me.santio.coffee.common.models.CommandParameter
 import me.santio.coffee.common.models.Path
 import me.santio.coffee.common.models.SubCommand
-import me.santio.coffee.common.parameter.AutomaticParameter
 import org.jetbrains.annotations.Nullable
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
@@ -34,7 +36,6 @@ object CommandParser {
     private val adapters = mutableListOf<ArgumentAdapter<*>>(
         IntegerAdapter, StringAdapter, DoubleAdapter, FloatAdapter
     )
-    private val automaticParameters = mutableListOf<AutomaticParameter>()
     private val registerListeners = mutableListOf<Consumer<List<SubCommand>>>()
     private var asyncDriver: AsyncDriver = DefaultAsyncDriver
 
@@ -108,23 +109,6 @@ object CommandParser {
     fun getAdapter(type: Class<*>): ArgumentAdapter<*> {
         return adapters.firstOrNull { it.type == type }
             ?: throw NoAdapterException("No adapter found for type ${type.simpleName}")
-    }
-
-    /**
-     * Makes all subcommands require the given parameters. These are added to the
-     * beginning of the parameter list.
-     * @param parameters The parameters to add.
-     */
-    fun registerAutomaticParameter(vararg parameters: AutomaticParameter) {
-        automaticParameters.addAll(parameters)
-    }
-
-    /**
-     * Get all automatic parameters registered.
-     * @return The automatic parameters.
-     */
-    fun getAutomaticParameters(): List<AutomaticParameter> {
-        return automaticParameters
     }
 
     /**
@@ -237,21 +221,26 @@ object CommandParser {
      */
     private fun parseMethod(method: Method): SubCommand {
         val arguments = mutableListOf<CommandParameter>()
-        val instance = method.declaringClass.kotlin.objectInstance
-            ?: method.declaringClass.getDeclaredConstructor().newInstance()
+
+        val instance = try {
+            method.declaringClass.kotlin.objectInstance
+                ?: method.declaringClass.getDeclaredConstructor().newInstance()
+        } catch(e: IllegalAccessException) {
+            throw CommandValidationException("Failed to create instance of class ${method.declaringClass.name}")
+        }
 
         val parameters: List<Pair<Parameter, KParameter?>> = if (method.kotlinFunction != null) {
             val data = method.kotlinFunction!!
             method.parameters.zip(data.valueParameters)
         } else method.parameters.map { it to null }
 
-        for (parameter in parameters) {
+        for ((placement, parameter) in parameters.withIndex()) {
             val name = parameter.second?.name ?: parameter.first.name
             val optional = parameter.second?.type?.isMarkedNullable ?: parameter.first.type.isAnnotationPresent(Nullable::class.java)
             val infinite = parameter.second?.isVararg ?: parameter.first.isVarArgs
 
             val individual = parameter.first.type.componentType ?: parameter.first.type
-            arguments.add(CommandParameter(name, individual, optional, infinite))
+            arguments.add(CommandParameter(placement, name, individual, optional, infinite))
         }
 
         return SubCommand(

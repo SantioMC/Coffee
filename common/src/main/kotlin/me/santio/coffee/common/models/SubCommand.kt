@@ -1,6 +1,9 @@
 package me.santio.coffee.common.models
 
+import me.santio.coffee.common.Coffee
+import me.santio.coffee.common.adapter.ContextData
 import me.santio.coffee.common.exception.CommandErrorException
+import me.santio.coffee.common.parameter.ParameterContext
 import me.santio.coffee.common.parser.ClassParser
 import me.santio.coffee.common.parser.CommandParser
 import java.lang.reflect.Method
@@ -13,60 +16,63 @@ data class SubCommand(
     val parameters: List<CommandParameter>
 ) {
 
-    fun execute(arguments: List<String>) {
-        CommandParser.runAsync {
-            @Suppress("NAME_SHADOWING")
-            val arguments = arguments.toMutableList()
+    private fun createContext(parameter: CommandParameter, data: ContextData): ParameterContext<*> {
+        return ParameterContext(
+            parameter.placement,
+            method,
+            parameter.type,
+            parameter.name,
+            data
+        )
+    }
 
-            val defaults = CommandParser.getAutomaticParameters()
-            val types = parameters.take(defaults.size).map { it.type }
-            val parameters = parameters.drop(defaults.size)
+    fun execute(arguments: List<String>, data: ContextData) {
 
-            val pass = mutableListOf<Any?>()
+        val bundle = Coffee.bundle
+        val response: MutableList<Any?> = mutableListOf()
+        var argumentPointer = 0
 
-            // Handle defaults
-            for (default in defaults) {
-                val type = types.firstOrNull { default.types.contains(it) }
-                    ?: throw CommandErrorException("Invalid default parameter type: ${default.javaClass.name}")
-
-                val input = arguments.removeFirstOrNull() ?: throw CommandErrorException("Failed to find value to supply automatic parameter, the implementation is likely broken")
-                pass.add(default.handle(type, input))
+        for (parameter in parameters) {
+            // Get the current associated argument
+            fun argument(): String {
+                return arguments.getOrNull(argumentPointer)
+                    ?: throw CommandErrorException("Missing argument, no value provided for ${parameter.name}")
             }
 
-            // Ensure all arguments are provided
-            val requiredArguments = parameters.filter { !it.optional }
-            if (arguments.size < requiredArguments.size)
-                throw CommandErrorException("Invalid syntax")
+            // Build a context for the parameter
+            val context = createContext(parameter, data)
+            bundle.handleParameter(context)
 
-            var index = 0;
-            for (argument in arguments) {
-                val parameter = parameters.getOrNull(index)
-                    ?: throw CommandErrorException("Invalid argument $index: $argument")
+            // Handle the parameter accordingly
+            if (context.responded) { // Handled by implementation
+                if (context.consume) argumentPointer++
+                response.add(context.response)
+            } else { // Handle by adapter
 
+                // Get the adapter and check if the adapter can properly handle the argument
                 val adapter = CommandParser.getAdapter(parameter.type)
-
-                if (!adapter.isValid(argument))
-                    throw CommandErrorException(adapter.error.replace("%arg%", argument))
+                if (!adapter.isValid(argument()))
+                    throw CommandErrorException(adapter.error.replace("%arg%", argument()))
 
                 if (parameter.infinite) {
-                    val array = pass.getOrNull(index) as? Array<*> ?: emptyArray<Any?>()
-                    val list = array.toMutableList()
+                    val remaining = arguments.subList(argumentPointer, arguments.size)
+                        .filter { adapter.isValid(it) }
+                        .map { adapter.adapt(it) }
 
-                    list.add(adapter.adapt(argument))
-
-                    if (pass.size <= index) pass.add(CommandParser.convertListToArray(list, parameter.type))
-                    else pass[index] = CommandParser.convertListToArray(list, parameter.type)
+                    response.add(CommandParser.convertListToArray(remaining, parameter.type))
                 } else {
-                    pass.add(adapter.adapt(argument))
-                    index++
+                    response.add(adapter.adapt(argument()))
+                    argumentPointer++
                 }
+
             }
 
-            if (isAsync) method.invoke(instance, *pass.toTypedArray())
-            else CommandParser.runSync {
-                method.invoke(instance, *pass.toTypedArray())
-            }
         }
+
+        val run = Runnable { method.invoke(instance, *response.toTypedArray()) }
+
+        if (isAsync) CommandParser.runAsync(run)
+        else CommandParser.runSync(run)
     }
 
     fun getBaseClass(): Class<*> {

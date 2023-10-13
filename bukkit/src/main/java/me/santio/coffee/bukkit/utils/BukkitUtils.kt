@@ -1,11 +1,12 @@
 package me.santio.coffee.bukkit.utils
 
-import me.santio.coffee.bukkit.SenderAutomaticParameter
+import me.santio.coffee.bukkit.BukkitContextData
 import me.santio.coffee.bukkit.builders.CommandBuilder
 import me.santio.coffee.common.Coffee
 import me.santio.coffee.common.exception.CommandErrorException
 import me.santio.coffee.common.models.Path
 import me.santio.coffee.common.models.SubCommand
+import me.santio.coffee.common.parser.CommandParser
 import org.bukkit.command.*
 
 internal object BukkitUtils {
@@ -65,24 +66,29 @@ internal object BukkitUtils {
             label: String,
             args: Array<out String>
         ): Boolean {
-            val builder = StringBuilder(label).append(" ")
-
-            if (sender is ConsoleCommandSender) builder.append(SenderAutomaticParameter.INTERNAL_CONSOLE)
-            else builder.append(sender.name)
-
-            builder.append(" ")
-            builder.append(args.joinToString(" "))
-
-            val path = Path.from(builder.toString())
-
             try {
-                Coffee.execute(path)
+                // Permission check
+                val path = Path.from("$label ${args.joinToString(" ")}")
+                val subCommand = CommandParser.findCommand(path)?.second ?: return true
+
+                if (!sender.hasPermission(AnnotationUtils.getPermission(subCommand.method))) {
+                    sender.sendMessage("§cYou do not have permission to execute this command.")
+                    return true
+                }
+
+                // Execute command
+                Coffee.execute(
+                    path,
+                    BukkitContextData(sender)
+                )
             } catch(e: Exception) {
                 if (e is CommandErrorException) {
                     sender.sendMessage("§c" + e.message)
                 } else {
                     sender.sendMessage("§cAn error was thrown while executing the command")
                     sender.sendMessage("§c${e.javaClass.simpleName}: ${e.message}")
+
+                    println("An error was thrown while executing the command")
                     e.printStackTrace()
                 }
             }

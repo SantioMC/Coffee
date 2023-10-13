@@ -1,4 +1,3 @@
 
 rootProject.name = "Coffee"
-include("common")
-include("bukkit")
+include("common", "bukkit")

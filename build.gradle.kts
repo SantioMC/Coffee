@@ -15,7 +15,7 @@ subprojects {
     publishing {
         publications {
             create<MavenPublication>("maven") {
-                groupId = group.toString()
+                groupId = "me.santio.coffee"
                 artifactId = project.name
                 version = publicationVersion
 

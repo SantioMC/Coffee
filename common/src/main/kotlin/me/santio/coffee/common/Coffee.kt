@@ -1,15 +1,23 @@
 package me.santio.coffee.common
 
 import me.santio.coffee.common.adapter.ArgumentAdapter
+import me.santio.coffee.common.adapter.ContextData
+import me.santio.coffee.common.annotations.Command
 import me.santio.coffee.common.models.CoffeeBundle
 import me.santio.coffee.common.models.Path
 import me.santio.coffee.common.parser.CommandParser
+import org.reflections.Reflections
 import java.util.function.Function
 
+@Suppress("unused")
 object Coffee {
+
+    internal lateinit var bundle: CoffeeBundle
+
     /**
      * Registers a class as a command and makes it available to be executed.
      * @param commands The classes to register.
+     * @return The Coffee object instance.
      */
     @JvmStatic
     fun brew(vararg commands: Class<*>): Coffee {
@@ -21,6 +29,20 @@ object Coffee {
         }
 
         return this
+    }
+
+    /**
+     * Registers all classes in a package as commands and makes it available to be executed.
+     * Any class that is not annotated with [Command] will be ignored.
+     * @param pkg The package to scan for classes to register.
+     * @return The Coffee object instance.
+     */
+    @JvmStatic
+    fun brew(`package`: String): Coffee {
+        val annotated: Set<Class<*>> = Reflections(`package`)
+            .getTypesAnnotatedWith(Command::class.java)
+
+        return this.brew(*annotated.toTypedArray())
     }
 
     /**
@@ -63,9 +85,10 @@ object Coffee {
     @JvmStatic
     @JvmName("bundle")
     fun <B: CoffeeBundle> import(bundle: B): Coffee {
-        CommandParser.registerAutomaticParameter(*bundle.automaticParameters.toTypedArray())
         CommandParser.registerAdapter(*bundle.adapters.toTypedArray())
         CommandParser.registerAsyncDriver(bundle.asyncDriver)
+        Coffee.bundle = bundle
+
         return this
     }
 
@@ -78,7 +101,7 @@ object Coffee {
      * executed successfully or not.
      */
     @JvmStatic
-    fun execute(path: Path): Boolean {
+    fun execute(path: Path, data: ContextData): Boolean {
         val command = CommandParser.findCommand(path) ?: return false
         val commandPath = command.first
 
@@ -88,7 +111,12 @@ object Coffee {
             .split(" ")
             .filter { it.isNotEmpty() }
 
-        command.second.execute(arguments)
+        try {
+            command.second.execute(arguments, data)
+        } catch (e: Exception) {
+            println("Failed to execute command: ${e.message}")
+        }
         return true
     }
+
 }
