@@ -226,7 +226,7 @@ The following is the adapter for the `Player` class in the Bukkit implementation
 object PlayerAdapter: ArgumentAdapter<Player>() {
     override val type: Class<Player> = Player::class.java
 
-    override fun adapt(arg: String): Player? {
+    override fun adapt(arg: String, context: ContextData): Player? {
         return Bukkit.getPlayer(arg)
     }
 

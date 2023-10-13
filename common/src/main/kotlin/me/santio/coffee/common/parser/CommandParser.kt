@@ -20,12 +20,8 @@ import java.lang.reflect.Method
 import java.lang.reflect.Modifier
 import java.lang.reflect.Parameter
 import java.util.function.Consumer
-import kotlin.reflect.KClass
 import kotlin.reflect.KParameter
-import kotlin.reflect.KTypeProjection
 import kotlin.reflect.KVisibility
-import kotlin.reflect.full.createType
-import kotlin.reflect.full.starProjectedType
 import kotlin.reflect.full.valueParameters
 import kotlin.reflect.jvm.kotlinFunction
 
@@ -106,9 +102,9 @@ object CommandParser {
      * @return The adapter for the given type.
      */
     @JvmStatic
-    fun getAdapter(type: Class<*>): ArgumentAdapter<*> {
+    fun getAdapter(type: Class<*>, value: String? = null): ArgumentAdapter<*> {
         return adapters.firstOrNull { it.type == type }
-            ?: throw NoAdapterException("No adapter found for type ${type.simpleName}")
+            ?: throw NoAdapterException("No adapter found for type ${type.simpleName}, serialized value: $value")
     }
 
     /**
@@ -174,13 +170,6 @@ object CommandParser {
         } else {
             if (!Modifier.isPublic(method.modifiers) || Modifier.isStatic(method.modifiers)) return true
         }
-
-//        if (method.parameterCount < automaticParameters.size) return true
-
-//        for (parameter in automaticParameters) {
-//            if (!parameter.isValid(method.parameterTypes[automaticParameters.indexOf(parameter)]))
-//                return true
-//        }
 
         return method.isAnnotationPresent(ParserIgnore::class.java)
             || method.isAnnotationPresent(JvmStatic::class.java)
@@ -272,44 +261,6 @@ object CommandParser {
             .flatMap { parseClass(it) }
 
         return methods
-    }
-
-    /**
-     * Adapts the given list to an array of the given type, this utilizes the adapters to
-     * convert a string to the correct type.
-     * @param query The first element of the list.
-     * @param list The list to convert.
-     * @return The converted array.
-     */
-    @JvmStatic
-    fun adapt(query: String, vararg list: String): Array<Any?> {
-        val adapted = mutableListOf<Any?>()
-
-        for (element in listOf(query, *list)) {
-            val adapter = adapters.firstOrNull { it.isValid(element) }
-            if (adapter == null) throw NoAdapterException("No adapter found for type ${element.javaClass}")
-            else adapted.add(adapter.adapt(element))
-        }
-
-        return adapted.toTypedArray()
-    }
-
-    /**
-     * Adapts a given string, separating each token by a space.
-     * @param query The string to adapt.
-     * @return The adapted array.
-     */
-    @JvmStatic
-    fun adapt(query: String): Array<Any?> {
-        val tokens = query.split(" ")
-        return adapt(tokens.first(), *tokens.drop(1).toTypedArray())
-    }
-
-    @Suppress("UNCHECKED_CAST")
-    fun <T : Any> createList(clazz: KClass<out T>, values: List<T?>): ArrayList<T> {
-        val type = ArrayList::class.createType(listOf(KTypeProjection.invariant(clazz.starProjectedType)))
-        val constructor = type.classifier as KClass<out ArrayList<T>>
-        return constructor.java.getConstructor(Collection::class.java).newInstance(values)
     }
 
     @Suppress("UNCHECKED_CAST")

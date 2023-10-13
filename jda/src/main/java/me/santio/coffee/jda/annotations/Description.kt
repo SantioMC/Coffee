@@ -1,4 +1,4 @@
-package me.santio.coffee.bukkit.annotations
+package me.santio.coffee.jda.annotations
 
 /**
  * The description of the command.

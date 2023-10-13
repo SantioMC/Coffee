@@ -1,4 +1,4 @@
-package me.santio.coffee.bukkit.annotations
+package me.santio.coffee.jda.annotations
 
 import net.dv8tion.jda.api.Permission
 

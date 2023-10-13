@@ -3,6 +3,7 @@ package me.santio.coffee.common
 import me.santio.coffee.common.adapter.ArgumentAdapter
 import me.santio.coffee.common.adapter.ContextData
 import me.santio.coffee.common.annotations.Command
+import me.santio.coffee.common.exception.CommandErrorException
 import me.santio.coffee.common.models.CoffeeBundle
 import me.santio.coffee.common.models.Path
 import me.santio.coffee.common.parser.CommandParser
@@ -68,7 +69,7 @@ object Coffee {
         val argumentAdapter = object : ArgumentAdapter<T>() {
             override val type: Class<T> = clazz
 
-            override fun adapt(arg: String): T? {
+            override fun adapt(arg: String, context: ContextData): T? {
                 return adapter.apply(arg)
             }
         }
@@ -95,10 +96,10 @@ object Coffee {
     /**
      * Evaluates a command and executes it if possible.
      * @param path The path to evaluate.
-     * @param defaults The default values to pass for every command, these will be handled
-     * by the automatic parameters.
+     * @param data The context data to pass to the command.
      * @return True if the command exists, false otherwise. This does not mean that the command was
      * executed successfully or not.
+     * @throws CommandErrorException If the command throws an error.
      */
     @JvmStatic
     fun execute(path: Path, data: ContextData): Boolean {
@@ -111,11 +112,30 @@ object Coffee {
             .split(" ")
             .filter { it.isNotEmpty() }
 
+        execute(commandPath, arguments, data)
+        return true
+    }
+
+    /**
+     * Evaluates a command and executes it if possible.
+     * @param path The path to evaluate.
+     * @param arguments The arguments to pass to the command.
+     * @param data The context data to pass to the command.
+     * @return True if the command exists, false otherwise. This does not mean that the command was
+     * executed successfully or not.
+     * @throws CommandErrorException If the command throws an error.
+     */
+    @JvmStatic
+    fun execute(path: Path, arguments: List<String>, data: ContextData): Boolean {
+        val command = CommandParser.findCommand(path) ?: return false
+
         try {
             command.second.execute(arguments, data)
         } catch (e: Exception) {
-            println("Failed to execute command: ${e.message}")
+            if (e is CommandErrorException) throw e
+            else println("Failed to execute command: ${e.message}")
         }
+
         return true
     }
 

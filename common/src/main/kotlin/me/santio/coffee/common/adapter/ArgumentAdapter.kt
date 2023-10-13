@@ -23,7 +23,7 @@ abstract class ArgumentAdapter<T> {
      * @param arg The argument to check.
      * @return True if the argument should be converted using this adapter.
      */
-    open fun isValid(arg: String): Boolean = adapt(arg) != null
+    open fun <C: ContextData>isValid(arg: String, context: C): Boolean = adapt(arg, context) != null
 
     /**
      * The function that gets ran whenever a suggestion is requested for this adapter.
@@ -40,6 +40,5 @@ abstract class ArgumentAdapter<T> {
      * @param arg The argument to convert.
      * @return The converted argument. If null, an error message will be sent and the command execution will stop
      */
-    abstract fun adapt(arg: String): T?
-
+    abstract fun adapt(arg: String, context: ContextData): T?
 }

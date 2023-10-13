@@ -50,18 +50,18 @@ data class SubCommand(
             } else { // Handle by adapter
 
                 // Get the adapter and check if the adapter can properly handle the argument
-                val adapter = CommandParser.getAdapter(parameter.type)
-                if (!adapter.isValid(argument()))
+                val adapter = CommandParser.getAdapter(parameter.type, argument())
+                if (!adapter.isValid(argument(), data))
                     throw CommandErrorException(adapter.error.replace("%arg%", argument()))
 
                 if (parameter.infinite) {
                     val remaining = arguments.subList(argumentPointer, arguments.size)
-                        .filter { adapter.isValid(it) }
-                        .map { adapter.adapt(it) }
+                        .filter { adapter.isValid(it, data) }
+                        .map { adapter.adapt(it, data) }
 
                     response.add(CommandParser.convertListToArray(remaining, parameter.type))
                 } else {
-                    response.add(adapter.adapt(argument()))
+                    response.add(adapter.adapt(argument(), data))
                     argumentPointer++
                 }
 
@@ -77,6 +77,11 @@ data class SubCommand(
 
     fun getBaseClass(): Class<*> {
         return ClassParser.getBaseClass(method.declaringClass)
+    }
+
+    fun <T: Annotation> getAnnotation(annotation: Class<T>): T? {
+        return method.getAnnotation(annotation)
+            ?: getBaseClass().getAnnotation(annotation)
     }
 
 }
