@@ -5,7 +5,7 @@ import me.santio.coffee.common.async.AsyncDriver
 import me.santio.coffee.common.async.ExecutorAsyncDriver
 import me.santio.coffee.common.models.CoffeeBundle
 import me.santio.coffee.common.parameter.ParameterContext
-import me.santio.coffee.common.parser.CommandParser
+import me.santio.coffee.common.registry.CommandRegistry
 import me.santio.coffee.jda.adapters.*
 import me.santio.coffee.jda.listeners.JDAListener
 import net.dv8tion.jda.api.JDA
@@ -32,11 +32,9 @@ class CoffeeJDA(private val bot: JDA, slash: Boolean = true): CoffeeBundle() {
         }
     }
 
-    init {
-        CommandParser.onRegister { commands ->
-            commands.forEach {
-                JDACommand.register(bot, it)
-            }
+    override fun ready() {
+        CommandRegistry.onRegister { command ->
+            JDACommand.register(bot, command)
         }
 
         bot.addEventListener(JDAListener(bot))

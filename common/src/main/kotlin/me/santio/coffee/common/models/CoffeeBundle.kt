@@ -22,6 +22,11 @@ abstract class CoffeeBundle {
      */
     open fun handleParameter(context: ParameterContext<*>) {}
 
+    /**
+     * Called when the bundle is ready to register to listeners.
+     */
+    open fun ready() {}
+
     fun import() {
         Coffee.import(this)
     }

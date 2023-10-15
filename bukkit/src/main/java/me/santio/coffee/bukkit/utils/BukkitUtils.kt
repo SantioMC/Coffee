@@ -1,12 +1,14 @@
 package me.santio.coffee.bukkit.utils
 
 import me.santio.coffee.bukkit.BukkitContextData
+import me.santio.coffee.bukkit.annotations.Permission
 import me.santio.coffee.bukkit.builders.CommandBuilder
 import me.santio.coffee.common.Coffee
 import me.santio.coffee.common.exception.CommandErrorException
-import me.santio.coffee.common.models.Path
-import me.santio.coffee.common.models.SubCommand
-import me.santio.coffee.common.parser.CommandParser
+import me.santio.coffee.common.models.tree.CommandTree
+import me.santio.coffee.common.registry.CommandRegistry
+import me.santio.coffee.common.resolvers.AnnotationResolver
+import me.santio.coffee.common.resolvers.Scope
 import org.bukkit.command.*
 
 internal object BukkitUtils {
@@ -18,6 +20,7 @@ internal object BukkitUtils {
      * @return The command map.
      * @see CommandMap
      */
+    @Suppress("MemberVisibilityCanBePrivate")
     fun getCommandMap(): CommandMap {
         val server = org.bukkit.Bukkit.getServer()
 
@@ -28,21 +31,34 @@ internal object BukkitUtils {
     }
 
     /**
+     * Unregisters a command from a server.
+     * @param command The command to unregister.
+     */
+    @Suppress("MemberVisibilityCanBePrivate")
+    fun unregister(command: CommandTree<*>) {
+        val name = command.name
+
+        if (!commandsRegistered.contains(name)) return
+        commandsRegistered.remove(name)
+
+        getCommandMap().getCommand(name)?.unregister(getCommandMap())
+    }
+
+    /**
      * Registers a command to a server.
      */
-    fun register(subcommand: SubCommand) {
-        val path = Path.from(subcommand)
-        val name = path.sections.first().name
+    fun register(command: CommandTree<*>) {
+        val name = command.name
 
-        if (commandsRegistered.contains(name)) return
+        if (commandsRegistered.contains(name)) unregister(command)
         commandsRegistered.add(name)
 
-        val command = CommandBuilder.from(subcommand)
-        getCommandMap().register(command.namespace, object : Command(
-            command.name,
-            command.description(),
-            "/${command.name}",
-            command.aliases()
+        val builder = CommandBuilder.from(command)
+        getCommandMap().register(builder.namespace, object : Command(
+            builder.name,
+            builder.description(),
+            "/${builder.name}",
+            builder.aliases()
         ) {
             override fun execute(sender: CommandSender, commandLabel: String, args: Array<out String>): Boolean {
                 CoffeeCommandHandler.onCommand(sender, this, commandLabel, args)
@@ -67,19 +83,23 @@ internal object BukkitUtils {
             args: Array<out String>
         ): Boolean {
             try {
-                // Permission check
-                val path = Path.from("$label ${args.joinToString(" ")}")
-                val subCommand = CommandParser.findCommand(path)?.second ?: return true
+                val tree = CommandRegistry.getCommand(command.name) ?: return true
+                val query = "${command.name} ${args.joinToString(" ")}"
+                val bean = tree.find(query) ?: return true
 
-                if (!sender.hasPermission(AnnotationUtils.getPermission(subCommand.method))) {
+                val permission = AnnotationResolver.getAnnotation(bean, Permission::class.java, Scope.ALL)?.value?.let {
+                    if (it == "none" || it.isEmpty()) null else it
+                }
+
+                if (permission != null && !sender.hasPermission(permission)) {
                     sender.sendMessage("§cYou do not have permission to execute this command.")
                     return true
                 }
 
                 // Execute command
                 Coffee.execute(
-                    path,
-                    BukkitContextData(sender)
+                    query,
+                    BukkitContextData(sender, tree)
                 )
             } catch(e: Exception) {
                 if (e is CommandErrorException) {

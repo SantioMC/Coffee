@@ -1,24 +1,32 @@
-package me.santio.coffee.common.models
+package me.santio.coffee.common.models.tree
 
 import me.santio.coffee.common.Coffee
 import me.santio.coffee.common.adapter.ContextData
 import me.santio.coffee.common.exception.CommandErrorException
+import me.santio.coffee.common.models.ResolvedParameter
 import me.santio.coffee.common.parameter.ParameterContext
-import me.santio.coffee.common.parser.ClassParser
-import me.santio.coffee.common.parser.CommandParser
+import me.santio.coffee.common.registry.AdapterRegistry
+import me.santio.coffee.common.utils.ReflectionUtils
 import java.lang.reflect.Method
 
-data class SubCommand(
-    val method: Method,
-    val instance: Any,
-    val isEntryPoint: Boolean,
+/**
+ * Represents a command (named coffee bean).
+ */
+data class Bean(
+    override val aliases: List<String>,
     val isAsync: Boolean,
-    val parameters: List<CommandParameter>
-) {
+    val parameters: List<ResolvedParameter>,
+    val instance: Any,
+    val method: Method,
+    override val path: String
+): Leaf(method, path) {
+    init {
+        if (aliases.isEmpty()) throw IllegalArgumentException("Aliases cannot be empty")
+    }
 
-    private fun createContext(parameter: CommandParameter, data: ContextData): ParameterContext<*> {
+    private fun createContext(parameter: ResolvedParameter, data: ContextData): ParameterContext<*> {
         return ParameterContext(
-            parameter.placement,
+            parameter.parameter.placement,
             method,
             parameter.type,
             parameter.name,
@@ -27,7 +35,6 @@ data class SubCommand(
     }
 
     fun execute(arguments: List<String>, data: ContextData) {
-
         val bundle = Coffee.bundle
         val response: MutableList<Any?> = mutableListOf()
         var argumentPointer = 0
@@ -50,7 +57,7 @@ data class SubCommand(
             } else { // Handle by adapter
 
                 // Get the adapter and check if the adapter can properly handle the argument
-                val adapter = CommandParser.getAdapter(parameter.type, argument())
+                val adapter = AdapterRegistry.getAdapter(parameter.type, argument())
                 if (!adapter.isValid(argument(), data))
                     throw CommandErrorException(adapter.error.replace("%arg%", argument()))
 
@@ -59,7 +66,7 @@ data class SubCommand(
                         .filter { adapter.isValid(it, data) }
                         .map { adapter.adapt(it, data) }
 
-                    response.add(CommandParser.convertListToArray(remaining, parameter.type))
+                    response.add(ReflectionUtils.convertListToArray(remaining, parameter.type))
                 } else {
                     response.add(adapter.adapt(argument(), data))
                     argumentPointer++
@@ -71,17 +78,8 @@ data class SubCommand(
 
         val run = Runnable { method.invoke(instance, *response.toTypedArray()) }
 
-        if (isAsync) CommandParser.runAsync(run)
-        else CommandParser.runSync(run)
-    }
-
-    fun getBaseClass(): Class<*> {
-        return ClassParser.getBaseClass(method.declaringClass)
-    }
-
-    fun <T: Annotation> getAnnotation(annotation: Class<T>): T? {
-        return method.getAnnotation(annotation)
-            ?: getBaseClass().getAnnotation(annotation)
+        if (isAsync) Coffee.bundle.asyncDriver.runAsync(run)
+        else Coffee.bundle.asyncDriver.runSync(run)
     }
 
 }

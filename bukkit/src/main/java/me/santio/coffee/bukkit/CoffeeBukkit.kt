@@ -1,5 +1,6 @@
 package me.santio.coffee.bukkit
 
+import me.santio.coffee.bukkit.adapters.MaterialAdapter
 import me.santio.coffee.bukkit.adapters.PlayerAdapter
 import me.santio.coffee.bukkit.annotations.Sender
 import me.santio.coffee.bukkit.utils.BukkitUtils
@@ -8,27 +9,28 @@ import me.santio.coffee.common.async.AsyncDriver
 import me.santio.coffee.common.exception.CommandErrorException
 import me.santio.coffee.common.models.CoffeeBundle
 import me.santio.coffee.common.parameter.ParameterContext
-import me.santio.coffee.common.parser.CommandParser
+import me.santio.coffee.common.registry.CommandRegistry
 import org.bukkit.command.CommandSender
 import org.bukkit.command.ConsoleCommandSender
 import org.bukkit.entity.Player
 import org.bukkit.plugin.java.JavaPlugin
 
 class CoffeeBukkit(plugin: JavaPlugin): CoffeeBundle() {
-    override val adapters: List<ArgumentAdapter<*>> = listOf(PlayerAdapter)
+    override val adapters: List<ArgumentAdapter<*>> = listOf(PlayerAdapter, MaterialAdapter)
     override val asyncDriver: AsyncDriver = BukkitAsyncDriver(plugin)
-
-    private val senderTypes = listOf(ConsoleCommandSender::class.java, CommandSender::class.java, Player::class.java)
 
     override fun handleParameter(context: ParameterContext<*>) {
         val injectSender = context.isFirst || context.method.getAnnotation(Sender::class.java) != null
-        if (injectSender && context.type in senderTypes) {
+        val senders = listOf(ConsoleCommandSender::class.java, CommandSender::class.java, Player::class.java)
+
+        if (injectSender && context.type in senders) {
             handleSender(context)
         }
     }
 
-    init {
-        CommandParser.onRegister { it.forEach(BukkitUtils::register) }
+    override fun ready() {
+        CommandRegistry.onRegister { BukkitUtils.register(it) }
+        CommandRegistry.onRemove {BukkitUtils.unregister(it) }
     }
 
     private fun handleSender(context: ParameterContext<*>) {

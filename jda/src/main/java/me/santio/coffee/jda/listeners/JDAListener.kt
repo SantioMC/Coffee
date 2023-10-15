@@ -2,7 +2,7 @@ package me.santio.coffee.jda.listeners
 
 import me.santio.coffee.common.Coffee
 import me.santio.coffee.common.exception.CommandErrorException
-import me.santio.coffee.common.models.Path
+import me.santio.coffee.common.registry.CommandRegistry
 import me.santio.coffee.jda.JDAContextData
 import me.santio.coffee.jda.gui.button.ButtonContext
 import me.santio.coffee.jda.gui.button.ButtonManager
@@ -20,10 +20,24 @@ class JDAListener(private val bot: JDA): ListenerAdapter() {
             it.asString
         }
 
-        val path = Path.from(event.name)
+        val command = CommandRegistry.getCommand(event.name) ?: return
 
+        val query = StringBuilder(event.name)
+        if (!event.subcommandGroup.isNullOrEmpty()) query.append(" ${event.subcommandGroup}")
+        if (!event.subcommandName.isNullOrEmpty()) query.append(" ${event.subcommandName}")
+
+        val bean = command.find(query.toString()) ?: run {
+            event.replyEmbeds(
+                EmbedBuilder()
+                    .setTitle(" ")
+                    .setDescription("Failed to find the command!")
+                    .setColor(0x67060c)
+                    .build()
+            ).setEphemeral(true).queue()
+            return
+        }
         try {
-            Coffee.execute(path, options, JDAContextData(event, bot))
+            Coffee.execute(bean, options, JDAContextData(event, bot, command))
         } catch(e: CommandErrorException) {
             event.replyEmbeds(
                 EmbedBuilder()

@@ -5,8 +5,10 @@ import me.santio.coffee.common.adapter.ContextData
 import me.santio.coffee.common.annotations.Command
 import me.santio.coffee.common.exception.CommandErrorException
 import me.santio.coffee.common.models.CoffeeBundle
-import me.santio.coffee.common.models.Path
+import me.santio.coffee.common.models.tree.Bean
 import me.santio.coffee.common.parser.CommandParser
+import me.santio.coffee.common.registry.AdapterRegistry
+import me.santio.coffee.common.registry.CommandRegistry
 import org.reflections.Reflections
 import java.util.function.Function
 
@@ -23,10 +25,7 @@ object Coffee {
     @JvmStatic
     fun brew(vararg commands: Class<*>): Coffee {
         for (command in commands) {
-            val subcommands = CommandParser.parseClass(command)
-            subcommands.forEach {
-                CommandParser.registerCommand(Path.from(it), it)
-            }
+            CommandRegistry.register(CommandParser.parse(command))
         }
 
         return this
@@ -47,6 +46,14 @@ object Coffee {
     }
 
     /**
+     * Spill the coffee, this will unregister all existing commands.
+     */
+    @JvmStatic
+    fun spill() {
+        CommandRegistry.dump()
+    }
+
+    /**
      * Registers an argument adapter to be used when parsing arguments. If you want a simplier way
      * to register adapters, use [bind]. This will replace any adapter that is already registered to
      * the same class.
@@ -55,7 +62,7 @@ object Coffee {
      */
     @JvmStatic
     fun adapter(vararg adapter: ArgumentAdapter<*>): Coffee {
-        CommandParser.registerAdapter(*adapter)
+        AdapterRegistry.registerAdapter(*adapter)
         return this
     }
 
@@ -74,7 +81,7 @@ object Coffee {
             }
         }
 
-        CommandParser.registerAdapter(argumentAdapter)
+        AdapterRegistry.registerAdapter(argumentAdapter)
         return this
     }
 
@@ -86,57 +93,54 @@ object Coffee {
     @JvmStatic
     @JvmName("bundle")
     fun <B: CoffeeBundle> import(bundle: B): Coffee {
-        CommandParser.registerAdapter(*bundle.adapters.toTypedArray())
-        CommandParser.registerAsyncDriver(bundle.asyncDriver)
+        AdapterRegistry.registerAdapter(*bundle.adapters.toTypedArray())
         Coffee.bundle = bundle
+        bundle.ready()
 
         return this
     }
 
     /**
-     * Evaluates a command and executes it if possible.
-     * @param path The path to evaluate.
+     * A nice easy way to execute commands if you don't want to code your own system to do so.
+     * @param query The full command with arguments (ex: /math sum 1 2).
      * @param data The context data to pass to the command.
      * @return True if the command exists, false otherwise. This does not mean that the command was
      * executed successfully or not.
      * @throws CommandErrorException If the command throws an error.
      */
     @JvmStatic
-    fun execute(path: Path, data: ContextData): Boolean {
-        val command = CommandParser.findCommand(path) ?: return false
-        val commandPath = command.first
+    fun execute(query: String, data: ContextData): Boolean {
+        val tree = CommandRegistry.getCommand(query.split(" ")[0]) ?: return false
+        val command = tree.find(query) ?: return false
 
-        val arguments = path.toString()
-            .substring(commandPath.toString().length)
+        val arguments = query
+            .substring(command.fullPath.length)
             .trim()
             .split(" ")
             .filter { it.isNotEmpty() }
 
-        execute(commandPath, arguments, data)
+        this.execute(command, arguments, data)
         return true
     }
 
     /**
-     * Evaluates a command and executes it if possible.
-     * @param path The path to evaluate.
-     * @param arguments The arguments to pass to the command.
+     * Evaluates a command bean and does some error handling.
+     * @param command The command bean to be executed.
+     * @param arguments The arguments (in string format) to be passed to the command.
      * @param data The context data to pass to the command.
-     * @return True if the command exists, false otherwise. This does not mean that the command was
-     * executed successfully or not.
      * @throws CommandErrorException If the command throws an error.
      */
     @JvmStatic
-    fun execute(path: Path, arguments: List<String>, data: ContextData): Boolean {
-        val command = CommandParser.findCommand(path) ?: return false
-
+    fun execute(command: Bean, arguments: List<String>, data: ContextData) {
         try {
-            command.second.execute(arguments, data)
+            command.execute(arguments, data)
         } catch (e: Exception) {
             if (e is CommandErrorException) throw e
-            else println("Failed to execute command: ${e.message}")
+            else {
+                println("Failed to execute command: ${e.message}")
+                e.printStackTrace()
+            }
         }
-
-        return true
     }
 
 }

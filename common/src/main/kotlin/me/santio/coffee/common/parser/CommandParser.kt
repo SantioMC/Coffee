@@ -1,273 +1,149 @@
 package me.santio.coffee.common.parser
 
-import me.santio.coffee.common.adapter.ArgumentAdapter
-import me.santio.coffee.common.adapter.impl.DoubleAdapter
-import me.santio.coffee.common.adapter.impl.FloatAdapter
-import me.santio.coffee.common.adapter.impl.IntegerAdapter
-import me.santio.coffee.common.adapter.impl.StringAdapter
 import me.santio.coffee.common.annotations.Command
 import me.santio.coffee.common.annotations.ParserIgnore
 import me.santio.coffee.common.annotations.Sync
-import me.santio.coffee.common.async.AsyncDriver
-import me.santio.coffee.common.async.DefaultAsyncDriver
 import me.santio.coffee.common.exception.CommandValidationException
-import me.santio.coffee.common.exception.NoAdapterException
-import me.santio.coffee.common.models.CommandParameter
-import me.santio.coffee.common.models.Path
-import me.santio.coffee.common.models.SubCommand
-import org.jetbrains.annotations.Nullable
+import me.santio.coffee.common.models.tree.Bean
+import me.santio.coffee.common.models.tree.CommandTree
+import me.santio.coffee.common.models.tree.Group
+import me.santio.coffee.common.models.tree.Leaf
+import me.santio.coffee.common.resolvers.AnnotationResolver
+import me.santio.coffee.common.resolvers.NameResolver
+import me.santio.coffee.common.resolvers.Scope
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
-import java.lang.reflect.Parameter
-import java.util.function.Consumer
-import kotlin.reflect.KParameter
 import kotlin.reflect.KVisibility
-import kotlin.reflect.full.valueParameters
 import kotlin.reflect.jvm.kotlinFunction
 
-@Suppress("unused")
+/**
+ * The main command parser, the primary task of this class is to generate a command tree from a class.
+ */
+@Suppress("MemberVisibilityCanBePrivate")
 object CommandParser {
 
-    private val commands = mutableMapOf<Path, SubCommand>()
-    private val adapters = mutableListOf<ArgumentAdapter<*>>(
-        IntegerAdapter, StringAdapter, DoubleAdapter, FloatAdapter
-    )
-    private val registerListeners = mutableListOf<Consumer<List<SubCommand>>>()
-    private var asyncDriver: AsyncDriver = DefaultAsyncDriver
-
     /**
-     * Registers a listener that will be called whenever a new command is registered.
-     * Once called, a list of all registered commands will be passed to the listener immediately.
-     * @param listener The listener to register.
+     * Creates an instance of a class, or gets the object instance if it is a singleton.
      */
     @JvmStatic
-    fun onRegister(listener: Consumer<List<SubCommand>>) {
-        listener.accept(commands.values.toList())
-        registerListeners.add(listener)
-    }
-
-    /**
-     * Registers a new asynchronous driver. This will be used to run commands asynchronously.
-     * If a driver is already registered, it will be replaced with the new driver.
-     * @param driver The driver to register.
-     * @see AsyncDriver
-     * @see Sync
-     */
-    @JvmStatic
-    fun registerAsyncDriver(driver: AsyncDriver) {
-        asyncDriver = driver
-    }
-
-    /**
-     * Runs the provided runnable through the asynchronous driver, keep in mind that the default
-     * driver implementation runs all commands synchronously.
-     * @see AsyncDriver
-     * @see Sync
-     */
-    @JvmStatic
-    fun runAsync(runnable: Runnable) {
-        asyncDriver.runAsync(runnable)
-    }
-
-    /**
-     * Runs the provided runnable through the asynchronous driver, however this will switch back
-     * to the main thread before running the runnable. Keep in mind that the default driver
-     * implementation runs all commands synchronously.
-     * @see AsyncDriver
-     * @see Sync
-     */
-    @JvmStatic
-    fun runSync(runnable: Runnable) {
-        asyncDriver.runSync(runnable)
-    }
-
-    /**
-     * Registers a new argument adapter. This will be used to parse arguments
-     * for the given type. If an adapter for the given type already exists,
-     * it will be replaced with the new adapter. This change will apply immediately.
-     * @param adapters The adapters to register.
-     * @see ArgumentAdapter
-     */
-    @JvmStatic
-    fun registerAdapter(vararg adapters: ArgumentAdapter<*>) {
-        for (adapter in adapters) {
-            this.adapters.removeIf { it.type == adapter.type }
-            this.adapters.add(adapter)
-        }
-    }
-
-    /**
-     * Get the adapter for the given type.
-     * @param type The type to get the adapter for.
-     * @return The adapter for the given type.
-     */
-    @JvmStatic
-    fun getAdapter(type: Class<*>, value: String? = null): ArgumentAdapter<*> {
-        return adapters.firstOrNull { it.type == type }
-            ?: throw NoAdapterException("No adapter found for type ${type.simpleName}, serialized value: $value")
-    }
-
-    /**
-     * Checks if the given class is a command class.
-     * @param clazz The class to check.
-     * @return True if the class is a command class.
-     * @see ClassParser.isValid
-     */
-    @JvmStatic
-    fun isCommand(clazz: Class<*>): Boolean = ClassParser.isValid(clazz)
-
-    /**
-     * Saves the given path and subcommand to the command list.
-     * @param path The path to save.
-     * @param command The associated subcommand to save.
-     */
-    @JvmStatic
-    fun registerCommand(path: Path, command: SubCommand) {
-        commands[path] = command
-        registerListeners.forEach { it.accept(commands.values.toList()) }
-    }
-
-    /**
-     * Finds the exact command for the given path.
-     * @param path The exact path to find.
-     * @return The command if found, null otherwise.
-     */
-    @JvmStatic
-    fun getCommand(path: Path): SubCommand? {
-        return commands[commands.keys.firstOrNull { it == path }]
-    }
-
-    /**
-     * Finds the most suitable command for the given path.
-     * @param path The path to find.
-     * @return The command if found, null otherwise.
-     */
-    @JvmStatic
-    fun findCommand(path: Path): Pair<Path, SubCommand>? {
-        var currentPath = path
-
-        while (currentPath.sections.isNotEmpty()) {
-            val command = getCommand(currentPath)
-            if (command != null) return currentPath to command
-
-            currentPath = currentPath.copy(sections = currentPath.sections.dropLast(1).toMutableList())
-        }
-
-        return null
-    }
-
-    /**
-     * Checks if the given method should be completely ignored by the parser.
-     * @param method The method to check.
-     * @return True if the method should be ignored.
-     * @see ParserIgnore
-     */
-    @JvmStatic
-    private fun ignore(method: Method): Boolean {
-        if (method.kotlinFunction != null) {
-            val data = method.kotlinFunction!!
-            if (data.visibility != KVisibility.PUBLIC || data.isSuspend) return true
-        } else {
-            if (!Modifier.isPublic(method.modifiers) || Modifier.isStatic(method.modifiers)) return true
-        }
-
-        return method.isAnnotationPresent(ParserIgnore::class.java)
-            || method.isAnnotationPresent(JvmStatic::class.java)
-    }
-
-    /**
-     * Checks if the given class should be completely ignored by the parser.
-     * @param clazz The class to check.
-     * @return True if the class should be ignored.
-     * @see ParserIgnore
-     */
-    @JvmStatic
-    fun ignore(clazz: Class<*>): Boolean {
-        if (clazz.kotlin.isCompanion) return true
-        if (!Modifier.isPublic(clazz.modifiers) || Modifier.isAbstract(clazz.modifiers)) return true
-        return clazz.isAnnotationPresent(ParserIgnore::class.java)
-    }
-
-    /**
-     * Finds the entry method for the given class. This will either be the method with the name
-     * "main", if it doesn't exist it will look for a standalone method, if it still can't find
-     * one it will take the first method it finds.
-     * @param clazz The class to find the entry method for.
-     * @return The entry method.
-     */
-    @JvmStatic
-    fun getEntryMethod(clazz: Class<*>): Method? {
-        val methods = clazz.declaredMethods.filter { !ignore(it) }
-        return methods
-            .filter { it.getAnnotation(Command::class.java) == null }
-            .firstOrNull { it.name == "main" || it.name == "execute" }
-    }
-
-    /**
-     * Parses a method of a class and return parameter information for the method.
-     * @param method The method to parse.
-     * @return The list of parameters.
-     */
-    private fun parseMethod(method: Method): SubCommand {
-        val arguments = mutableListOf<CommandParameter>()
-
-        val instance = try {
-            method.declaringClass.kotlin.objectInstance
-                ?: method.declaringClass.getDeclaredConstructor().newInstance()
+    fun <T: Any> getInstance(clazz: Class<T>): T {
+        return try {
+            clazz.kotlin.objectInstance ?: run {
+                clazz.getDeclaredConstructor().isAccessible = true
+                clazz.getDeclaredConstructor().newInstance()
+            }
         } catch(e: IllegalAccessException) {
-            throw CommandValidationException("Failed to create instance of class ${method.declaringClass.name}")
+            throw CommandValidationException("Failed to create instance of class ${clazz.name}")
         }
+    }
 
-        val parameters: List<Pair<Parameter, KParameter?>> = if (method.kotlinFunction != null) {
-            val data = method.kotlinFunction!!
-            method.parameters.zip(data.valueParameters)
-        } else method.parameters.map { it to null }
+    /**
+     * Parses a class into a command tree.
+     */
+    @JvmStatic
+    fun <T: Any> parse(clazz: Class<T>): CommandTree<T> {
+        return parse(getInstance(clazz))
+    }
 
-        for ((placement, parameter) in parameters.withIndex()) {
-            val name = parameter.second?.name ?: parameter.first.name
-            val optional = parameter.second?.type?.isMarkedNullable ?: parameter.first.type.isAnnotationPresent(Nullable::class.java)
-            val infinite = parameter.second?.isVararg ?: parameter.first.isVarArgs
+    /**
+     * Parses an instance of a class into a command tree.
+     */
+    @JvmStatic
+    fun <T: Any> parse(instance: T): CommandTree<T> {
+        val clazz = instance::class.java
 
-            val individual = parameter.first.type.componentType ?: parameter.first.type
-            arguments.add(CommandParameter(placement, name, individual, optional, infinite, parameter.first))
-        }
+        if (!isValid(clazz))
+            throw CommandValidationException("Class ${clazz.name} is not a command, annotate it with @Command")
 
-        return SubCommand(
+        val tree = CommandTree(NameResolver.resolveName(clazz, Scope.SELF), instance)
+        tree.children.addAll(getBeans(clazz, tree.name, instance))
+
+        return tree
+    }
+
+    /**
+     * Gets all coffee beans from a class.
+     * @param clazz The class to get the coffee beans from.
+     * @return The coffee beans.
+     */
+    @JvmStatic
+    @JvmOverloads
+    fun getBeans(clazz: Class<*>, path: String, instance: Any? = null): MutableList<Leaf> {
+        val leaves = mutableListOf<Leaf>()
+
+        // Add all valid methods
+        leaves += clazz.declaredMethods
+            .filter { isValid(it) }
+            .map { createBean(
+                instance ?: run {
+                    val constructor = clazz.getDeclaredConstructor()
+                    constructor.isAccessible = true
+                    constructor.newInstance()
+                },
+                it,
+                path
+            )}
+            .reversed()
+
+        // Add all classes
+        leaves += clazz.declaredClasses
+            .filter { !it.kotlin.isCompanion }
+            .map { Group(it, path) }
+            .map { it.withChildren(getBeans(it.clazz, "$path ${it.name}")) }
+
+        return leaves
+    }
+
+    /**
+     * Generates a coffee bean from a method.
+     * @param method The method to generate the coffee bean from.
+     * @return The coffee bean.
+     */
+    @JvmStatic
+    fun createBean(parent: Any, method: Method, path: String): Bean {
+        val parameters = ParameterParser.getParameters(method)
+            .map { it.resolve() }
+
+        return Bean(
+            NameResolver.resolveName(method),
+            AnnotationResolver.hasAnnotation(method, Sync::class.java),
+            parameters,
+            parent,
             method,
-            instance,
-            getEntryMethod(method.declaringClass) == method,
-            method.getAnnotation(Sync::class.java) == null,
-            arguments
+            path
         )
     }
 
     /**
-     * Parses the given class and returns a list of subcommands.
-     * @param clazz The class to register.
-     * @return The list of subcommands that were parsed.
+     * Checks if a class is a valid command.
+     * @param clazz The class to check.
+     * @return Whether the class is a valid command.
+     * @param T The type of the class.
      */
-    @JvmStatic
-    fun parseClass(clazz: Class<*>): List<SubCommand> {
-        if (!isCommand(clazz)) throw CommandValidationException("Class is not a valid command class. Annotate it with @Command")
-
-        // Get all methods in this class
-        val methods = clazz.declaredMethods
-            .filter { !ignore(it) }
-            .map { parseMethod(it) }.toMutableList()
-
-        // Get all subcommands in inner classes
-        methods += clazz.declaredClasses
-            .filter { !ignore(it) }
-            .flatMap { parseClass(it) }
-
-        return methods
+    fun <T> isValid(clazz: Class<T>): Boolean {
+        return AnnotationResolver.hasAnnotation(clazz, Command::class.java)
     }
 
-    @Suppress("UNCHECKED_CAST")
-    inline fun <reified T> convertListToArray(list: List<T>, type: Class<*>): Array<T?> {
-        val array = java.lang.reflect.Array.newInstance(type, list.size) as Array<T?>
-        for (i in list.indices) array[i] = list[i]
-        return array
+    /**
+     * Whether a method is capable of becoming a command / subcommand.
+     */
+    fun isValid(method: Method): Boolean {
+        if (method.returnType != Void.TYPE) return false
+        if (method.kotlinFunction != null) {
+            val data = method.kotlinFunction!!
+            if (data.isAbstract || data.isExternal || data.isInfix || data.isInline || data.isOperator) return false
+        }
+
+        if (method.kotlinFunction != null) {
+            val data = method.kotlinFunction!!
+            if (data.visibility != KVisibility.PUBLIC || data.isSuspend) return false
+        } else {
+            if (!Modifier.isPublic(method.modifiers) || Modifier.isStatic(method.modifiers)) return false
+        }
+
+        return !(method.isAnnotationPresent(ParserIgnore::class.java)
+            || method.isAnnotationPresent(JvmStatic::class.java))
     }
+
 
 }
