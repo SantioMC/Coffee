@@ -79,9 +79,12 @@ class JDAListener(private val bot: JDA): ListenerAdapter() {
         val adapter = AdapterRegistry.getAdapter(argument.type)
 
         event.replyChoices(
-            adapter.suggest(option.value).map {
-                Command.Choice(it, it)
-            }
+            adapter.suggest(option.value)
+                .filter { it.startsWith(option.value, true) }
+                .take(25)
+                .map {
+                    Command.Choice(it, it)
+                }
         ).queue()
     }
 
