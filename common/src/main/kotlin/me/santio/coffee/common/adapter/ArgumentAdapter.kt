@@ -28,6 +28,9 @@ abstract class ArgumentAdapter<T> {
     /**
      * The function that gets ran whenever a suggestion is requested for this adapter.
      * By default, we return an empty list, however you can override this to change its behaviour
+     *
+     * For suggestions to work properly, at least one suggestion MUST be present when the arg is an empty string.
+     *
      * @param arg What the user has typed so far.
      * @return A list of suggestions, these will be filtered automatically by Coffee for you.
      */
@@ -41,4 +44,12 @@ abstract class ArgumentAdapter<T> {
      * @return The converted argument. If null, an error message will be sent and the command execution will stop
      */
     abstract fun adapt(arg: String, context: ContextData): T?
+
+    /**
+     * Check if this adapter has any suggestions.
+     * @return True if this adapter has any suggestions, false otherwise.
+     */
+    fun hasSuggestions(): Boolean {
+        return suggest("").isNotEmpty()
+    }
 }

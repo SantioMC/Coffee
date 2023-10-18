@@ -4,6 +4,7 @@ import me.santio.coffee.common.models.ResolvedParameter
 import me.santio.coffee.common.models.tree.Bean
 import me.santio.coffee.common.models.tree.CommandTree
 import me.santio.coffee.common.models.tree.Group
+import me.santio.coffee.common.registry.AdapterRegistry
 import me.santio.coffee.common.resolvers.AnnotationResolver
 import me.santio.coffee.common.resolvers.Scope
 import me.santio.coffee.jda.annotations.Description
@@ -43,7 +44,8 @@ object JDACommand {
     private fun addOptions(command: SlashCommandData, bean: Bean) {
         for (parameter in bean.parameters.filter { it.type != SlashCommandInteractionEvent::class.java }) {
             val optionType = getOptionType(parameter)
-            command.addOption(optionType, parameter.name, getDescription(parameter), !parameter.optional)
+            val adapter = AdapterRegistry.getAdapter(parameter.type)
+            command.addOption(optionType, parameter.name, getDescription(parameter), !parameter.optional, adapter.hasSuggestions())
         }
     }
 
