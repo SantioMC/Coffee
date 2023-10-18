@@ -79,7 +79,7 @@ object JDACommand {
     }
 
     fun register(bot: JDA, command: CommandTree<*>) {
-        val permission = AnnotationResolver.getAnnotation(command, Permission::class.java, Scope.SELF)
+        val permission = AnnotationResolver.getAnnotation(command, Permission::class.java, Scope.ALL)
         val description = AnnotationResolver.getAnnotation(command, Description::class.java, Scope.PARENT)
 
         val slashCommand = Commands.slash(command.name, description?.value ?: "No description provided")
