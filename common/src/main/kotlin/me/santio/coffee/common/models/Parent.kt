@@ -1,9 +1,12 @@
 package me.santio.coffee.common.models
 
+import me.santio.coffee.common.annotations.Entry
 import me.santio.coffee.common.models.tree.Bean
 import me.santio.coffee.common.models.tree.CommandTree
 import me.santio.coffee.common.models.tree.Group
 import me.santio.coffee.common.models.tree.Leaf
+import me.santio.coffee.common.resolvers.AnnotationResolver
+import me.santio.coffee.common.resolvers.Scope
 
 interface Parent {
     val name: String
@@ -32,6 +35,15 @@ interface Parent {
      * @return The closest matching bean.
      */
     fun find(query: String): Bean? {
+        // Check if we're looking for the root
+        val roots = listOf("main", "entry", "execute", name.lowercase())
+        if (query.lowercase() in roots) {
+            val beans = children.filterIsInstance(Bean::class.java)
+            return beans.firstOrNull { AnnotationResolver.hasAnnotation(it.method, Entry::class.java, Scope.SELF) }
+                ?: beans.firstOrNull { it.name.lowercase() in roots }
+                ?: beans.firstOrNull()
+        }
+
         return all().values.toList()
             .filter { query.startsWith(it.fullPath) }
             .maxByOrNull { it.fullPath.split(" ").size }
