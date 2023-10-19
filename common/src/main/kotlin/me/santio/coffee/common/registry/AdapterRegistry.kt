@@ -1,10 +1,7 @@
 package me.santio.coffee.common.registry
 
 import me.santio.coffee.common.adapter.ArgumentAdapter
-import me.santio.coffee.common.adapter.impl.DoubleAdapter
-import me.santio.coffee.common.adapter.impl.FloatAdapter
-import me.santio.coffee.common.adapter.impl.IntegerAdapter
-import me.santio.coffee.common.adapter.impl.StringAdapter
+import me.santio.coffee.common.adapter.impl.*
 import me.santio.coffee.common.exception.NoAdapterException
 
 /**
@@ -13,7 +10,7 @@ import me.santio.coffee.common.exception.NoAdapterException
 object AdapterRegistry {
 
     private val adapters = mutableListOf<ArgumentAdapter<*>>(
-        IntegerAdapter, StringAdapter, DoubleAdapter, FloatAdapter
+        IntegerAdapter, StringAdapter, DoubleAdapter, FloatAdapter, LongAdapter
     )
 
     /**
