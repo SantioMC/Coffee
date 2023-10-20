@@ -8,6 +8,7 @@ import me.santio.coffee.jda.JDAContextData
 import me.santio.coffee.jda.gui.button.ButtonContext
 import me.santio.coffee.jda.gui.button.ButtonManager
 import me.santio.coffee.jda.gui.modal.ModalManager
+import me.santio.coffee.jda.gui.modal.exceptions.ModalAdaptException
 import net.dv8tion.jda.api.EmbedBuilder
 import net.dv8tion.jda.api.JDA
 import net.dv8tion.jda.api.events.interaction.ModalInteractionEvent
@@ -115,7 +116,22 @@ class JDAListener(private val bot: JDA): ListenerAdapter() {
     }
 
     override fun onModalInteraction(event: ModalInteractionEvent) {
-        ModalManager.respond(event.modalId, event)
+        try {
+            ModalManager.respond(event.modalId, event)
+        } catch(e: ModalAdaptException) {
+            event.replyEmbeds(
+                EmbedBuilder()
+                    .setTitle(" ")
+                    .setDescription("""
+                    An error occurred while executing the command
+                    ```diff
+                    - ${e.message}
+                    ```
+                    """.trimIndent())
+                    .setColor(0x67060c)
+                    .build()
+            ).setEphemeral(true).queue()
+        }
     }
 
 }

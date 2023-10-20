@@ -7,11 +7,13 @@ import me.santio.coffee.common.resolvers.IDResolver
 import me.santio.coffee.jda.gui.modal.annotations.Item
 import me.santio.coffee.jda.gui.modal.annotations.Modal
 import me.santio.coffee.jda.gui.modal.annotations.Placeholder
+import me.santio.coffee.jda.gui.modal.exceptions.ModalAdaptException
 import net.dv8tion.jda.api.events.interaction.ModalInteractionEvent
 import net.dv8tion.jda.api.interactions.callbacks.IModalCallback
 import net.dv8tion.jda.api.interactions.components.ActionRow
 import net.dv8tion.jda.api.interactions.components.text.TextInput
 import java.lang.reflect.Field
+import java.lang.reflect.Modifier
 import java.util.*
 import java.util.function.BiConsumer
 import java.util.function.Consumer
@@ -24,6 +26,7 @@ object ModalManager {
     private val modals = mutableMapOf<String, ExecutableModal1<*>>()
     
     private fun createActionRow(field: Field): ActionRow? {
+        if (Modifier.isPrivate(field.modifiers)) return null
         val item = AnnotationResolver.getAnnotation(field, Item::class.java) ?: return null
         val placeholder = AnnotationResolver.getAnnotation(field, Placeholder::class.java)?.value ?: ""
         field.isAccessible = true
@@ -45,10 +48,7 @@ object ModalManager {
             createActionRow(it)
         }
         
-        println("Fields: ${fields.joinToString(", ")}")
-        
         val id = IDResolver.id()
-
         val jdaModal = JDAModal.create(id, modal.title)
             .addComponents(*fields.toTypedArray())
             .build()
@@ -96,6 +96,7 @@ object ModalManager {
      * Submit a response for a open modal
      * @param modalId The id of the modal
      * @param event The triggered event
+     * @throws ModalAdaptException If a adapter failed to parse a specific field
      */
     fun respond(modalId: String, event: ModalInteractionEvent) {
         val modal = modals[modalId] ?: return
@@ -104,10 +105,16 @@ object ModalManager {
         }
         
         for (field in fields) {
-            val adapter = AdapterRegistry.getAdapter(field.type)
+            val adapter = AdapterRegistry.getAdapter(field.type, field.name)
+            val arg = event.getValue(field.name)?.asString
+            
+            if (!adapter.isValid(
+                arg ?: throw IllegalStateException("Failed to find associated option from field: '${field.name}'"),
+                ContextData(null)
+            )) throw ModalAdaptException(adapter.error.replace("%arg%", arg))
+
             field.set(modal.modal, adapter.adapt(
-                event.getValue(field.name)?.asString
-                        ?: throw IllegalStateException("Failed to find associated option from field: '${field.name}'"),
+                arg,
                 ContextData(null)
             ))
         }
