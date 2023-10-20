@@ -45,7 +45,7 @@ object JDACommand {
         for (parameter in bean.parameters.filter { it.type != SlashCommandInteractionEvent::class.java }) {
             val optionType = getOptionType(parameter)
             val adapter = AdapterRegistry.getAdapter(parameter.type)
-            command.addOption(optionType, parameter.name, getDescription(parameter), !parameter.optional, adapter.hasSuggestions())
+            command.addOption(optionType, parameter.name, getDescription(parameter), !parameter.optional, adapter.hasSuggestions)
         }
     }
 

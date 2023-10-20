@@ -18,6 +18,12 @@ abstract class ArgumentAdapter<T> {
     open val error: String = "Invalid argument: %s"
 
     /**
+     * If you want to implement a custom suggestion handler, override both this and [suggest].
+     * Set this to true if you want to handle suggestions yourself.
+     */
+    open val hasSuggestions: Boolean = false
+
+    /**
      * The function to check if the string should be converted using this adapter.
      * By default, we check if the argument is not null, however you can override this to change it's behaviour
      * @param arg The argument to check.
@@ -28,8 +34,6 @@ abstract class ArgumentAdapter<T> {
     /**
      * The function that gets ran whenever a suggestion is requested for this adapter.
      * By default, we return an empty list, however you can override this to change its behaviour
-     *
-     * For suggestions to work properly, at least one suggestion MUST be present when the arg is an empty string.
      *
      * @param arg What the user has typed so far.
      * @return A list of suggestions, these will be filtered automatically by Coffee for you.
@@ -45,11 +49,4 @@ abstract class ArgumentAdapter<T> {
      */
     abstract fun adapt(arg: String, context: ContextData): T?
 
-    /**
-     * Check if this adapter has any suggestions.
-     * @return True if this adapter has any suggestions, false otherwise.
-     */
-    fun hasSuggestions(): Boolean {
-        return suggest("").isNotEmpty()
-    }
 }
