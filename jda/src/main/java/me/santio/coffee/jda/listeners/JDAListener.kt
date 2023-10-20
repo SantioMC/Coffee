@@ -7,8 +7,10 @@ import me.santio.coffee.common.registry.CommandRegistry
 import me.santio.coffee.jda.JDAContextData
 import me.santio.coffee.jda.gui.button.ButtonContext
 import me.santio.coffee.jda.gui.button.ButtonManager
+import me.santio.coffee.jda.gui.modal.ModalManager
 import net.dv8tion.jda.api.EmbedBuilder
 import net.dv8tion.jda.api.JDA
+import net.dv8tion.jda.api.events.interaction.ModalInteractionEvent
 import net.dv8tion.jda.api.events.interaction.command.CommandAutoCompleteInteractionEvent
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent
@@ -111,4 +113,9 @@ class JDAListener(private val bot: JDA): ListenerAdapter() {
             event
         ))
     }
+
+    override fun onModalInteraction(event: ModalInteractionEvent) {
+        ModalManager.respond(event.modalId, event)
+    }
+
 }

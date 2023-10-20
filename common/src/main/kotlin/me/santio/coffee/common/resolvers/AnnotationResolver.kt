@@ -3,6 +3,7 @@ package me.santio.coffee.common.resolvers
 import me.santio.coffee.common.models.tree.Bean
 import me.santio.coffee.common.models.tree.CommandTree
 import java.lang.reflect.AnnotatedElement
+import java.lang.reflect.Field
 import java.lang.reflect.Method
 
 /**
@@ -27,6 +28,7 @@ object AnnotationResolver {
         val parent = when (type) {
             is Class<*> -> type.superclass
             is Method -> type.declaringClass
+            is Field -> type.declaringClass
             else -> return null
         } ?: return null
 

@@ -1,5 +1,6 @@
 package me.santio.coffee.jda.gui.button
 
+import me.santio.coffee.common.resolvers.IDResolver
 import net.dv8tion.jda.api.entities.emoji.EmojiUnion
 import net.dv8tion.jda.api.interactions.components.buttons.ButtonStyle
 import java.time.Duration
@@ -14,7 +15,7 @@ data class Button(
     var emote: EmojiUnion? = null,
     var consumer: (ButtonContext) -> Unit
 ) {
-    val id: String = "coffee-${UUID.randomUUID().toString().substring(0, 16)}"
+    val id: String = IDResolver.id()
 
     companion object {
         @JvmStatic
