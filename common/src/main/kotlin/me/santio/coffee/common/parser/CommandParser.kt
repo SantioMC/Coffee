@@ -124,7 +124,6 @@ object CommandParser {
         return AnnotationResolver.hasAnnotation(clazz, Command::class.java)
             && !clazz.isLocalClass
             && !clazz.isMemberClass
-            && !clazz.isSynthetic
             && clazz.declaringClass == null
     }
 
