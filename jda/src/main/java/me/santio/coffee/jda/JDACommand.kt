@@ -32,12 +32,12 @@ object JDACommand {
 
     private fun getOptionType(parameter: ResolvedParameter): OptionType {
         if (Coffee.isVerbose()) println("Finding option type for ${AdapterRegistry.toBoxed(parameter.type).name}")
-        val type = when (AdapterRegistry.toBoxed(parameter.type)) {
-            Int::class.java -> OptionType.INTEGER
-            Boolean::class.java -> OptionType.BOOLEAN
-            User::class.java, Member::class.java -> OptionType.USER
-            TextChannel::class.java, VoiceChannel::class.java, GuildChannel::class.java -> OptionType.CHANNEL
-            Double::class.java, Float::class.java -> OptionType.NUMBER
+        val type = when (AdapterRegistry.toBoxed(parameter.type).simpleName.lowercase()) {
+            "int", "integer" -> OptionType.INTEGER
+            "boolean" -> OptionType.BOOLEAN
+            "user", "member" -> OptionType.USER
+            "textchannel", "voicechannel", "guildchannel" -> OptionType.CHANNEL
+            "double", "float" -> OptionType.NUMBER
             else -> OptionType.STRING
         }
 
