@@ -66,7 +66,9 @@ object AdapterRegistry {
     private fun toBoxed(primitive: Class<*>): Class<*> {
         if (!primitive.isPrimitive) return primitive
         return try {
-            Class.forName("java.lang.${primitive.name}")
+            Class.forName("java.lang.${
+                primitive.name.lowercase().replaceFirstChar { it.uppercase() }
+            }")
         } catch(e: ClassNotFoundException) { primitive }
     }
 
