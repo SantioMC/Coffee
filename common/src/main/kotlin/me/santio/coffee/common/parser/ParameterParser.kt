@@ -44,9 +44,10 @@ object ParameterParser {
      * Checks if the parameter is optional.
      */
     private fun isOptional(parameter: ParameterPair): Boolean {
-        return parameter.kotlin?.isOptional
-            ?: parameter.java.isAnnotationPresent(Optional::class.java)
+        return parameter.java.isAnnotationPresent(Optional::class.java)
             || parameter.java.isAnnotationPresent(Nullable::class.java)
+            || parameter.kotlin?.isOptional
+            ?: false
     }
 
     /**
