@@ -63,7 +63,7 @@ object AdapterRegistry {
      * @return The boxed class type, if it isn't a primitive value itself will be returned.
      */
     @JvmStatic
-    private fun toBoxed(primitive: Class<*>): Class<*> {
+    fun toBoxed(primitive: Class<*>): Class<*> {
         if (!primitive.isPrimitive) return primitive
         return try {
             Class.forName("java.lang.${

@@ -19,14 +19,17 @@ import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEve
 import net.dv8tion.jda.api.interactions.commands.DefaultMemberPermissions
 import net.dv8tion.jda.api.interactions.commands.OptionType
 import net.dv8tion.jda.api.interactions.commands.build.Commands
+import net.dv8tion.jda.api.interactions.commands.build.OptionData
 import net.dv8tion.jda.api.interactions.commands.build.SlashCommandData
 import net.dv8tion.jda.api.interactions.commands.build.SubcommandData
 import net.dv8tion.jda.api.interactions.commands.build.SubcommandGroupData
 
 object JDACommand {
 
+    private val globalOptions: MutableSet<OptionData> = mutableSetOf()
+
     private fun getOptionType(parameter: ResolvedParameter): OptionType {
-        return when (parameter.type) {
+        return when (AdapterRegistry.toBoxed(parameter.type)) {
             Int::class.java -> OptionType.INTEGER
             Boolean::class.java -> OptionType.BOOLEAN
             User::class.java, Member::class.java -> OptionType.USER
@@ -47,12 +50,34 @@ object JDACommand {
             val adapter = AdapterRegistry.getAdapter(parameter.type)
             command.addOption(optionType, parameter.name, getDescription(parameter), !parameter.optional, adapter.hasSuggestions)
         }
+
+        for (global in globalOptions) {
+            if (command.options.any { it.name == global.name }) continue
+            command.addOption(
+                global.type,
+                global.name,
+                global.description,
+                global.isRequired,
+                global.isAutoComplete
+            )
+        }
     }
 
     private fun addOptions(command: SubcommandData, bean: Bean) {
         for (parameter in bean.parameters.filter { it.type != SlashCommandInteractionEvent::class.java }) {
             val optionType = getOptionType(parameter)
             command.addOption(optionType, parameter.name, getDescription(parameter), !parameter.optional)
+        }
+
+        for (global in globalOptions) {
+            if (command.options.any { it.name == global.name }) continue
+            command.addOption(
+                global.type,
+                global.name,
+                global.description,
+                global.isRequired,
+                global.isAutoComplete
+            )
         }
     }
 
@@ -78,6 +103,7 @@ object JDACommand {
         }
     }
 
+    @JvmStatic
     fun register(bot: JDA, command: CommandTree<*>) {
         val permission = AnnotationResolver.getAnnotation(command, Permission::class.java, Scope.ALL)
         val description = AnnotationResolver.getAnnotation(command, Description::class.java, Scope.PARENT)
@@ -96,6 +122,16 @@ object JDACommand {
         }
 
         bot.upsertCommand(slashCommand).queue()
+    }
+
+    @JvmStatic
+    fun registerGlobalOption(option: OptionData) {
+        globalOptions.add(option)
+    }
+
+    @JvmStatic
+    fun removeGlobalOption(option: OptionData) {
+        globalOptions.remove(option)
     }
 
 }
