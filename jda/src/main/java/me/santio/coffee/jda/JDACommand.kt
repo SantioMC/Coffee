@@ -1,5 +1,6 @@
 package me.santio.coffee.jda
 
+import me.santio.coffee.common.Coffee
 import me.santio.coffee.common.models.ResolvedParameter
 import me.santio.coffee.common.models.tree.Bean
 import me.santio.coffee.common.models.tree.CommandTree
@@ -30,14 +31,18 @@ object JDACommand {
     private val globalOptions: MutableSet<OptionData> = mutableSetOf()
 
     private fun getOptionType(parameter: ResolvedParameter): OptionType {
-        return when (parameter.type) {
-            Int::class.java, Int::class.javaPrimitiveType -> OptionType.INTEGER
-            Boolean::class.java, Boolean::class.javaPrimitiveType -> OptionType.BOOLEAN
+        if (Coffee.isVerbose()) println("Finding option type for ${AdapterRegistry.toBoxed(parameter.type).name}")
+        val type = when (AdapterRegistry.toBoxed(parameter.type)) {
+            Int::class.java -> OptionType.INTEGER
+            Boolean::class.java -> OptionType.BOOLEAN
             User::class.java, Member::class.java -> OptionType.USER
             TextChannel::class.java, VoiceChannel::class.java, GuildChannel::class.java -> OptionType.CHANNEL
-            Double::class.java, Float::class.java, Double::class.javaPrimitiveType, Float::class.javaPrimitiveType -> OptionType.NUMBER
+            Double::class.java, Float::class.java -> OptionType.NUMBER
             else -> OptionType.STRING
         }
+
+        if (Coffee.isVerbose()) println("- Using OptionType.${type.name}")
+        return type
     }
 
     private fun getDescription(parameter: ResolvedParameter): String {

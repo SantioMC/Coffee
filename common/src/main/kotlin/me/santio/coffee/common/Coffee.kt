@@ -155,9 +155,19 @@ object Coffee {
      * @param verbose The value to set the setting to
      * @return The Coffee object instance.
      */
+    @JvmStatic
     fun verbose(verbose: Boolean = true): Coffee {
         this.verbose = true
         return this
+    }
+
+    /**
+     * Whether Coffee is currently printing verbose messages
+     * @return True if Coffee is printing extra logs, false otherwise
+     */
+    @JvmStatic
+    fun isVerbose(): Boolean {
+        return this.verbose
     }
 
 }
