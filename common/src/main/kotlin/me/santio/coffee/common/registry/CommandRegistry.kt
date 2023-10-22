@@ -23,6 +23,7 @@ object CommandRegistry {
         commands.add(command)
 
         registerEvents.forEach { it.accept(command) }
+        println("Registered command: ${command.name}, tree size: ${command.all().size}")
     }
 
     /**

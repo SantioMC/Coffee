@@ -1,5 +1,6 @@
 package me.santio.coffee.common.registry
 
+import me.santio.coffee.common.Coffee
 import me.santio.coffee.common.adapter.ArgumentAdapter
 import me.santio.coffee.common.adapter.impl.*
 import me.santio.coffee.common.exception.NoAdapterException
@@ -35,8 +36,16 @@ object AdapterRegistry {
      */
     @JvmStatic
     fun getAdapter(type: Class<*>, value: String? = null): ArgumentAdapter<*> {
-        return this.adapters.firstOrNull { toBoxed(it.type) == toBoxed(type) }
-            ?: throw NoAdapterException("No adapter found for type ${type.name}, serialized value: $value")
+        val adapter =  this.adapters.firstOrNull { toBoxed(it.type) == toBoxed(type) }
+
+        if (adapter == null && Coffee.verbose) {
+            println("""
+            Failed to find adapter for: ${toBoxed(type).name}, the available options are:
+            ${all().joinToString(", ") { toBoxed(it.type).name }}
+            """.trimIndent())
+        }
+
+        return adapter ?: throw NoAdapterException("No adapter found for type ${toBoxed(type).name}, serialized value: $value")
     }
 
     /**

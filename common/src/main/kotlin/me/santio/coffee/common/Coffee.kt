@@ -16,6 +16,7 @@ import java.util.function.Function
 object Coffee {
 
     internal lateinit var bundle: CoffeeBundle
+    internal var verbose: Boolean = false
 
     /**
      * Registers a class as a command and makes it available to be executed.
@@ -48,10 +49,12 @@ object Coffee {
 
     /**
      * Spill the coffee, this will unregister all existing commands.
+     * @return The Coffee object instance.
      */
     @JvmStatic
-    fun spill() {
+    fun spill(): Coffee {
         CommandRegistry.dump()
+        return this
     }
 
     /**
@@ -59,6 +62,7 @@ object Coffee {
      * to register adapters, use [bind]. This will replace any adapter that is already registered to
      * the same class.
      * @param adapter The adapter to register.
+     * @return The Coffee object instance.
      * @see bind
      */
     @JvmStatic
@@ -70,6 +74,7 @@ object Coffee {
     /**
      * Binds a class to an adapter, if the class is already bound, it will be replaced.
      * @param clazz The class to bind.
+     * @return The Coffee object instance.
      * @param adapter The adapter to bind the class to.
      */
     @JvmStatic
@@ -89,6 +94,7 @@ object Coffee {
     /**
      * Imports a bundle into Coffee, this is used to load in implementations.
      * @param bundle The bundle to import.
+     * @return The Coffee object instance.
      * @see CoffeeBundle
      */
     @JvmStatic
@@ -142,6 +148,16 @@ object Coffee {
                 e.printStackTrace()
             }
         }
+    }
+
+    /**
+     * Whether Coffee should be more verbose in it's logging.
+     * @param verbose The value to set the setting to
+     * @return The Coffee object instance.
+     */
+    fun verbose(verbose: Boolean = true): Coffee {
+        this.verbose = true
+        return this
     }
 
 }
