@@ -122,6 +122,10 @@ object CommandParser {
      */
     fun <T> isValid(clazz: Class<T>): Boolean {
         return AnnotationResolver.hasAnnotation(clazz, Command::class.java)
+            && !clazz.isLocalClass
+            && !clazz.isMemberClass
+            && !clazz.isSynthetic
+            && clazz.declaringClass == null
     }
 
     /**

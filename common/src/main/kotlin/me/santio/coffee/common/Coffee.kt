@@ -39,8 +39,9 @@ object Coffee {
      */
     @JvmStatic
     fun brew(`package`: String): Coffee {
-        val annotated: Set<Class<*>> = Reflections(`package`)
+        val annotated: List<Class<*>> = Reflections(`package`)
             .getTypesAnnotatedWith(Command::class.java)
+            .filter { CommandParser.isValid(it) }
 
         return this.brew(*annotated.toTypedArray())
     }
