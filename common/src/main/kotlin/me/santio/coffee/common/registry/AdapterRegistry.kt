@@ -64,18 +64,10 @@ object AdapterRegistry {
      */
     @JvmStatic
     private fun toBoxed(primitive: Class<*>): Class<*> {
-        return when (primitive) {
-            Boolean::class.javaPrimitiveType -> Boolean::class.java
-            Char::class.javaPrimitiveType -> Char::class.java
-            Byte::class.javaPrimitiveType -> Byte::class.java
-            Short::class.javaPrimitiveType -> Short::class.java
-            Int::class.javaPrimitiveType -> Int::class.java
-            Long::class.javaPrimitiveType -> Long::class.java
-            Float::class.javaPrimitiveType -> Float::class.java
-            Double::class.javaPrimitiveType -> Double::class.java
-            Void::class.javaPrimitiveType -> Void::class.java
-            else -> primitive
-        }
+        if (!primitive.isPrimitive) return primitive
+        return try {
+            Class.forName("java.lang.${primitive.name}")
+        } catch(e: ClassNotFoundException) { primitive }
     }
 
 }
