@@ -35,11 +35,17 @@ object AdapterRegistry {
      */
     @JvmStatic
     fun getAdapter(type: Class<*>, value: String? = null): ArgumentAdapter<*> {
-        // Booleans have a weird edge case where they differ between Java and Kotlin
-        if (type.name == "java.lang.Boolean") return BooleanAdapter
-
-        return this.adapters.firstOrNull { it.type == type }
+        return this.adapters.firstOrNull { it.type.name == type.name }
             ?: throw NoAdapterException("No adapter found for type ${type.name}, serialized value: $value")
+    }
+
+    /**
+     * Get a list of all available adapters
+     * @return A list of registered adapters
+     */
+    @JvmStatic
+    fun all(): List<ArgumentAdapter<*>> {
+        return this.adapters.toList()
     }
 
 }
