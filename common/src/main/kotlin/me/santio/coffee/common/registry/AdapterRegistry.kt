@@ -10,7 +10,7 @@ import me.santio.coffee.common.exception.NoAdapterException
 object AdapterRegistry {
 
     private val adapters = mutableListOf<ArgumentAdapter<*>>(
-        IntegerAdapter, StringAdapter, DoubleAdapter, FloatAdapter, LongAdapter
+        IntegerAdapter, StringAdapter, DoubleAdapter, FloatAdapter, LongAdapter, BooleanAdapter
     )
 
     /**
