@@ -10,7 +10,7 @@ import me.santio.coffee.common.exception.NoAdapterException
 object AdapterRegistry {
 
     private val adapters = mutableListOf<ArgumentAdapter<*>>(
-        IntegerAdapter, StringAdapter, DoubleAdapter, FloatAdapter, LongAdapter, BooleanAdapter
+        IntegerAdapter, StringAdapter, DoubleAdapter, FloatAdapter, LongAdapter, BooleanAdapter, ShortAdapter, ByteAdapter
     )
 
     /**
@@ -23,7 +23,7 @@ object AdapterRegistry {
     @JvmStatic
     fun registerAdapter(vararg adapters: ArgumentAdapter<*>) {
         for (adapter in adapters) {
-            this.adapters.removeIf { it.type == adapter.type }
+            this.adapters.removeIf { toBoxed(it.type) == toBoxed(adapter.type) }
             this.adapters.add(adapter)
         }
     }
@@ -35,7 +35,7 @@ object AdapterRegistry {
      */
     @JvmStatic
     fun getAdapter(type: Class<*>, value: String? = null): ArgumentAdapter<*> {
-        return this.adapters.firstOrNull { it.type.name == type.name }
+        return this.adapters.firstOrNull { toBoxed(it.type) == toBoxed(type) }
             ?: throw NoAdapterException("No adapter found for type ${type.name}, serialized value: $value")
     }
 
@@ -46,6 +46,27 @@ object AdapterRegistry {
     @JvmStatic
     fun all(): List<ArgumentAdapter<*>> {
         return this.adapters.toList()
+    }
+
+    /**
+     * Converts a primitive type to it's boxed varient
+     * @param primitive The primitive class
+     * @return The boxed class type, if it isn't a primitive value itself will be returned.
+     */
+    @JvmStatic
+    private fun toBoxed(primitive: Class<*>): Class<*> {
+        return when (primitive) {
+            Boolean::class.javaPrimitiveType -> Boolean::class.java
+            Char::class.javaPrimitiveType -> Char::class.java
+            Byte::class.javaPrimitiveType -> Byte::class.java
+            Short::class.javaPrimitiveType -> Short::class.java
+            Int::class.javaPrimitiveType -> Int::class.java
+            Long::class.javaPrimitiveType -> Long::class.java
+            Float::class.javaPrimitiveType -> Float::class.java
+            Double::class.javaPrimitiveType -> Double::class.java
+            Void::class.javaPrimitiveType -> Void::class.java
+            else -> primitive
+        }
     }
 
 }
