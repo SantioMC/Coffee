@@ -35,6 +35,9 @@ object AdapterRegistry {
      */
     @JvmStatic
     fun getAdapter(type: Class<*>, value: String? = null): ArgumentAdapter<*> {
+        // Booleans have a weird edge case where they differ between Java and Kotlin
+        if (type in listOf(Boolean::class, Boolean::class.java)) return BooleanAdapter
+
         return this.adapters.firstOrNull { it.type == type }
             ?: throw NoAdapterException("No adapter found for type ${type.simpleName}, serialized value: $value")
     }
