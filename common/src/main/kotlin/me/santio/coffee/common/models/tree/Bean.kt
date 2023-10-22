@@ -41,9 +41,11 @@ data class Bean(
 
         for (parameter in parameters) {
             // Get the current associated argument
-            fun argument(): String {
-                return arguments.getOrNull(argumentPointer)
-                    ?: throw CommandErrorException("Missing argument, no value provided for ${parameter.name}")
+            fun argument(): String? {
+                return arguments.getOrNull(argumentPointer) ?: run {
+                    if (!parameter.optional)throw CommandErrorException("Missing argument, no value provided for ${parameter.name}")
+                    null
+                }
             }
 
             // Build a context for the parameter
@@ -56,10 +58,17 @@ data class Bean(
                 response.add(context.response)
             } else { // Handle by adapter
 
+                val argument = argument()
+
+                if (argument == null) {
+                    response.add(null)
+                    continue
+                }
+
                 // Get the adapter and check if the adapter can properly handle the argument
-                val adapter = AdapterRegistry.getAdapter(parameter.type, argument())
-                if (!adapter.isValid(argument(), data))
-                    throw CommandErrorException(adapter.error.replace("%arg%", argument()))
+                val adapter = AdapterRegistry.getAdapter(parameter.type, argument)
+                if (!adapter.isValid(argument, data))
+                    throw CommandErrorException(adapter.error.replace("%arg%", argument))
 
                 if (parameter.infinite) {
                     val remaining = arguments.subList(argumentPointer, arguments.size)
@@ -68,7 +77,7 @@ data class Bean(
 
                     response.add(ReflectionUtils.convertListToArray(remaining, parameter.type))
                 } else {
-                    response.add(adapter.adapt(argument(), data))
+                    response.add(adapter.adapt(argument, data))
                     argumentPointer++
                 }
 
