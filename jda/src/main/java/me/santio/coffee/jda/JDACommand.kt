@@ -30,12 +30,12 @@ object JDACommand {
     private val globalOptions: MutableSet<OptionData> = mutableSetOf()
 
     private fun getOptionType(parameter: ResolvedParameter): OptionType {
-        return when (AdapterRegistry.toBoxed(parameter.type)) {
-            Int::class.java -> OptionType.INTEGER
-            Boolean::class.java -> OptionType.BOOLEAN
+        return when (parameter.type) {
+            Int::class.java, Int::class.javaPrimitiveType -> OptionType.INTEGER
+            Boolean::class.java, Boolean::class.javaPrimitiveType -> OptionType.BOOLEAN
             User::class.java, Member::class.java -> OptionType.USER
             TextChannel::class.java, VoiceChannel::class.java, GuildChannel::class.java -> OptionType.CHANNEL
-            Double::class.java, Float::class.java -> OptionType.NUMBER
+            Double::class.java, Float::class.java, Double::class.javaPrimitiveType, Float::class.javaPrimitiveType -> OptionType.NUMBER
             else -> OptionType.STRING
         }
     }
