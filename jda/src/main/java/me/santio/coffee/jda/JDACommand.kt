@@ -9,6 +9,7 @@ import me.santio.coffee.common.resolvers.AnnotationResolver
 import me.santio.coffee.common.resolvers.Scope
 import me.santio.coffee.jda.annotations.Description
 import me.santio.coffee.jda.annotations.Permission
+import me.santio.coffee.jda.annotations.Skip
 import net.dv8tion.jda.api.JDA
 import net.dv8tion.jda.api.entities.Member
 import net.dv8tion.jda.api.entities.User
@@ -51,7 +52,13 @@ object JDACommand {
             command.addOption(optionType, parameter.name, getDescription(parameter), !parameter.optional, adapter.hasSuggestions)
         }
 
+        val skipGlobals = AnnotationResolver.getAnnotation(bean, Skip::class.java, Scope.ALL)
+            ?.options
+            ?.map { it.lowercase() }
+            ?: emptyList()
+
         for (global in globalOptions) {
+            if (skipGlobals.contains(global.name.lowercase())) continue
             if (command.options.any { it.name == global.name }) continue
             command.addOption(
                 global.type,
@@ -69,7 +76,13 @@ object JDACommand {
             command.addOption(optionType, parameter.name, getDescription(parameter), !parameter.optional)
         }
 
+        val skipGlobals = AnnotationResolver.getAnnotation(bean, Skip::class.java, Scope.ALL)
+            ?.options
+            ?.map { it.lowercase() }
+            ?: emptyList()
+
         for (global in globalOptions) {
+            if (skipGlobals.contains(global.name.lowercase())) continue
             if (command.options.any { it.name == global.name }) continue
             command.addOption(
                 global.type,
