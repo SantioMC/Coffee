@@ -39,7 +39,7 @@ object AdapterRegistry {
         if (type in listOf(Boolean::class, Boolean::class.java)) return BooleanAdapter
 
         return this.adapters.firstOrNull { it.type == type }
-            ?: throw NoAdapterException("No adapter found for type ${type.simpleName}, serialized value: $value")
+            ?: throw NoAdapterException("No adapter found for type ${type.name}, serialized value: $value")
     }
 
 }
