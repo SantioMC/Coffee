@@ -17,7 +17,7 @@ import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEve
  * @param slash Should we use slash commands, or the old text commands way
  * NOTE: Only slash commands are supported at the moment
  */
-class CoffeeJDA(private val bot: JDA, slash: Boolean = true): CoffeeBundle() {
+open class CoffeeJDA(private val bot: JDA, slash: Boolean = true): CoffeeBundle() {
 
     override val adapters: List<ArgumentAdapter<*>> = listOf(
         UserAdapter, MemberAdapter, RoleAdapter,

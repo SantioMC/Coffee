@@ -15,7 +15,7 @@ import org.bukkit.command.ConsoleCommandSender
 import org.bukkit.entity.Player
 import org.bukkit.plugin.java.JavaPlugin
 
-class CoffeeBukkit(plugin: JavaPlugin): CoffeeBundle() {
+open class CoffeeBukkit(plugin: JavaPlugin): CoffeeBundle() {
     override val adapters: List<ArgumentAdapter<*>> = listOf(PlayerAdapter, MaterialAdapter)
     override val asyncDriver: AsyncDriver = BukkitAsyncDriver(plugin)
 
