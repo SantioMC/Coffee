@@ -11,6 +11,12 @@ object ButtonManager {
         }
     }
 
+    fun get(id: String): Button? {
+        return buttons.firstOrNull {
+            it.id == id
+        }
+    }
+
     fun clear() {
         buttons.clear()
     }

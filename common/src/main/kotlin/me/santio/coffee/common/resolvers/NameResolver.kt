@@ -1,6 +1,7 @@
 package me.santio.coffee.common.resolvers
 
 import me.santio.coffee.common.annotations.Command
+import java.lang.reflect.Field
 import java.lang.reflect.Method
 
 /**
@@ -75,6 +76,19 @@ object NameResolver {
             .lowercase()
             .removeSuffix("subcommand")
             .removeSuffix("command")
+    }
+
+    /**
+     * Generate a human-readable name for a field based on its name.
+     * @param field The field to generate the name from.
+     * @return The generated name.
+     */
+    fun generateName(field: Field): String {
+        return field.name.mapIndexed { index, char ->
+            if (index == 0) char.uppercase()
+            else if (char.isUpperCase()) " $char"
+            else char
+        }.joinToString("")
     }
 
 }

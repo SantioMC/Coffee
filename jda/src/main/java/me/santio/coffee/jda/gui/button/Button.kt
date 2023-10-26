@@ -6,6 +6,7 @@ import net.dv8tion.jda.api.interactions.components.buttons.ButtonStyle
 import java.time.Duration
 import java.time.temporal.ChronoUnit
 import java.util.*
+import java.util.function.Consumer
 import kotlin.concurrent.schedule
 
 data class Button(
@@ -16,6 +17,7 @@ data class Button(
     var consumer: (ButtonContext) -> Unit
 ) {
     val id: String = IDResolver.id()
+    var onExpire: Consumer<Button>? = null
 
     companion object {
         @JvmStatic
@@ -34,7 +36,9 @@ data class Button(
 
             // Invalidate the button after 1 minute to prevent memory leaks
             Timer().schedule(expiry.toMillis()) {
+                if (ButtonManager.get(button.id) == null) return@schedule
                 ButtonManager.unregister(button.id)
+                button.onExpire?.accept(button)
             }
 
             return button
@@ -49,6 +53,17 @@ data class Button(
         private fun defaultConsumer(context: ButtonContext) {
             context.event.deferEdit().queue()
         }
+    }
+
+    /**
+     * Add a consumer for when the button expires. This will always run unless the button
+     * was removed when pressed OR if it's currently disabled.
+     * @param onExpire the consumer to run when the button expires
+     * @return This button
+     */
+    fun onExpire(onExpire: Consumer<Button>): Button {
+        this.onExpire = onExpire
+        return this
     }
 
     fun build(): net.dv8tion.jda.api.interactions.components.buttons.Button {
