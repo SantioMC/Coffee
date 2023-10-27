@@ -26,7 +26,6 @@ class Dropdown <T: Any> private constructor(
     private val options: List<SelectOption>,
     private val callback: Consumer<DropdownContext<*>>,
     private val selectTarget: SelectTarget? = null,
-    expiry: Duration = Duration.of(1, ChronoUnit.MINUTES)
 ) {
     internal val id: String = IDResolver.id()
     private val enabled: MutableList<String> = mutableListOf()
@@ -36,6 +35,7 @@ class Dropdown <T: Any> private constructor(
     private var disabled = false
     private var placeholder: String? = null
     private var onExpire: Consumer<Dropdown<T>>? = null
+    private var expiry: Duration = Duration.of(1, ChronoUnit.MINUTES)
 
     init {
         DropdownManager.dropdowns.add(this)
@@ -99,6 +99,17 @@ class Dropdown <T: Any> private constructor(
         }
 
         callback.accept(context)
+    }
+
+    /**
+     * Sets when the dropdown should expire. This will automatically unregister the dropdown
+     * after the specified duration has passed.
+     * @param duration the duration to wait before expiring
+     * @return the dropdown
+     */
+    fun expireAfter(duration: Duration): Dropdown<T> {
+        this.expiry = duration
+        return this
     }
 
     /**
@@ -203,7 +214,7 @@ class Dropdown <T: Any> private constructor(
                     else annotation.name,
                     it.name
                 )
-                    .withDescription(description?.value ?: "")
+                    .withDescription(description?.value)
                     .withEmoji(getEmoji(annotation))
             }
 
