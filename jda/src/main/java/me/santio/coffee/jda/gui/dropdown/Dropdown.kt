@@ -8,7 +8,6 @@ import me.santio.coffee.common.resolvers.NameResolver
 import me.santio.coffee.common.resolvers.Scope
 import me.santio.coffee.jda.gui.button.ButtonManager
 import me.santio.coffee.jda.gui.dropdown.annotations.Option
-import net.dv8tion.jda.api.entities.IMentionable
 import net.dv8tion.jda.api.entities.Mentions
 import net.dv8tion.jda.api.interactions.components.selections.*
 import net.dv8tion.jda.api.interactions.components.selections.EntitySelectMenu.SelectTarget
@@ -173,7 +172,7 @@ class Dropdown <T: Any> private constructor(
             return Dropdown(options.toList(), callback as Consumer<DropdownContext<*>>)
         }
 
-        fun from(selectTarget: SelectTarget, callback: Consumer<DropdownContext<List<IMentionable>>>): Dropdown<Unit> {
+        fun from(selectTarget: SelectTarget, callback: Consumer<DropdownContext<Mentions>>): Dropdown<Unit> {
             return Dropdown(emptyList(), callback as Consumer<DropdownContext<*>>, selectTarget)
         }
 
