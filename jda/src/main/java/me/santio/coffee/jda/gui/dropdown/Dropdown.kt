@@ -6,9 +6,11 @@ import me.santio.coffee.common.resolvers.AnnotationResolver
 import me.santio.coffee.common.resolvers.IDResolver
 import me.santio.coffee.common.resolvers.NameResolver
 import me.santio.coffee.common.resolvers.Scope
+import me.santio.coffee.jda.annotations.Description
 import me.santio.coffee.jda.gui.button.ButtonManager
 import me.santio.coffee.jda.gui.dropdown.annotations.Option
 import net.dv8tion.jda.api.entities.Mentions
+import net.dv8tion.jda.api.entities.emoji.Emoji
 import net.dv8tion.jda.api.interactions.components.selections.*
 import net.dv8tion.jda.api.interactions.components.selections.EntitySelectMenu.SelectTarget
 import java.lang.reflect.Field
@@ -162,6 +164,12 @@ class Dropdown <T: Any> private constructor(
             }
         }
 
+        private fun getEmoji(annotation: Option?): Emoji? {
+            return if (annotation == null || annotation.emoji.isEmpty()) null else try {
+                Emoji.fromFormatted(annotation.emoji)
+            } catch(e: Exception) { null }
+        }
+
         fun from(vararg options: String, callback: Consumer<DropdownContext<List<String>>>): Dropdown<Unit> {
             return Dropdown(options.map {
                 SelectOption.of(it, it)
@@ -177,17 +185,31 @@ class Dropdown <T: Any> private constructor(
         }
 
         fun <T: Any> from(clazz: Class<T>, callback: Consumer<DropdownContext<T>>): Dropdown<T> {
+            val enabled = mutableListOf<String>()
+            val constructor = clazz.getDeclaredConstructor()
+
+            constructor.isAccessible = true
+            val instance = constructor.newInstance()
+
             val options = getAvailableFields(clazz).map {
                 val annotation = AnnotationResolver.getAnnotation(it, Option::class.java, Scope.SELF)
+                val description = AnnotationResolver.getAnnotation(it, Description::class.java, Scope.SELF)
+
+                // Find default values
+                if (it.getBoolean(instance)) enabled.add(it.name)
+
                 SelectOption.of(
                     if (annotation == null || annotation.name.isEmpty()) NameResolver.generateName(it)
                     else annotation.name,
                     it.name
                 )
+                    .withDescription(description?.value ?: "")
+                    .withEmoji(getEmoji(annotation))
             }
 
             val dropdown = Dropdown<T>(options, callback as Consumer<DropdownContext<*>>, null)
             dropdown.clazz = clazz
+            dropdown.enabled.addAll(enabled)
 
             return dropdown
         }
