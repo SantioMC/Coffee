@@ -9,6 +9,7 @@ import me.santio.coffee.common.resolvers.Scope
 import me.santio.coffee.jda.gui.button.ButtonManager
 import me.santio.coffee.jda.gui.dropdown.annotations.Option
 import net.dv8tion.jda.api.entities.IMentionable
+import net.dv8tion.jda.api.entities.Mentions
 import net.dv8tion.jda.api.interactions.components.selections.*
 import net.dv8tion.jda.api.interactions.components.selections.EntitySelectMenu.SelectTarget
 import java.lang.reflect.Field
@@ -92,8 +93,8 @@ class Dropdown <T: Any> private constructor(
                 it.value
             }
         } else if (event is EntitySelectInteraction) {
-            val context = context as DropdownContext<List<IMentionable>>
-            context.selected = event.mentions.getMentions()
+            val context = context as DropdownContext<Mentions>
+            context.selected = event.mentions
         }
 
         callback.accept(context)
