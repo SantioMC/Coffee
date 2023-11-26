@@ -30,7 +30,7 @@ open class CoffeeBukkit(plugin: JavaPlugin): CoffeeBundle() {
 
     override fun ready() {
         CommandRegistry.onRegister { BukkitUtils.register(it) }
-        CommandRegistry.onRemove {BukkitUtils.unregister(it) }
+        CommandRegistry.onRemove { BukkitUtils.unregister(it) }
     }
 
     private fun handleSender(context: ParameterContext<*>) {
